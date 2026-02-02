@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { LogOut, Shield, User } from 'lucide-react';
 import dnaiLogo from '@/assets/dnai-logo.png';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { user, role, signOut, isAdmin } = useAuth();
 
   return (
@@ -69,7 +71,12 @@ const Index = () => {
               Start New Session
             </Button>
             {isAdmin && (
-              <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
+              <Button 
+                variant="outline" 
+                className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                onClick={() => navigate('/admin')}
+              >
+                <Shield className="mr-2 h-4 w-4" />
                 Admin Panel
               </Button>
             )}
