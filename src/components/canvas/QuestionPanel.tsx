@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -9,8 +8,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Question, QuestionSection, SECTION_META } from '@/types/questions';
+import { 
+  Question, 
+  QuestionSection, 
+  SECTION_META,
+  LEAD_SOURCE_OPTIONS,
+  generateLeadSourceFollowUps,
+} from '@/types/questions';
 import { useQuestionFlow } from '@/hooks/useQuestionFlow';
+import { MultiSelectCheckbox } from '@/components/ui/multi-select-checkbox';
 import { ChevronDown, ChevronUp, Check, ArrowRight, SkipForward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,17 +36,53 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
     upcomingQuestions,
     answerQuestion,
     skipQuestion,
+    injectDynamicQuestions,
   } = useQuestionFlow(sessionId);
 
   const [inputValue, setInputValue] = useState('');
+  const [multiSelectValue, setMultiSelectValue] = useState<string[]>([]);
   const [showAllAnswered, setShowAllAnswered] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Handle answer submission
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!currentQuestion) return;
 
-    // Validate
+    // Handle multi-select separately
+    if (currentQuestion.type === 'multi-select') {
+      if (currentQuestion.required && multiSelectValue.length === 0) {
+        setError('Please select at least one option');
+        return;
+      }
+
+      // Submit the multi-select answer
+      answerQuestion(multiSelectValue);
+
+      // If this question triggers dynamic follow-ups (e.g., lead sources)
+      if (currentQuestion.dynamicFollowUp && currentQuestion.id === 'q4') {
+        const followUpQuestions = generateLeadSourceFollowUps(multiSelectValue);
+        injectDynamicQuestions(followUpQuestions);
+      }
+
+      // Create nodes for each selection if applicable
+      if (currentQuestion.nodeCreation?.createPerSelection && onNodeCreate) {
+        multiSelectValue.forEach((value) => {
+          const option = currentQuestion.options?.find(o => o.value === value);
+          const label = option?.label || value.replace(/-/g, ' ');
+          onNodeCreate(currentQuestion.nodeCreation!.type, {
+            sourceId: value,
+            label: label,
+            questionId: currentQuestion.id,
+          });
+        });
+      }
+
+      setMultiSelectValue([]);
+      setError(null);
+      return;
+    }
+
+    // Validate regular inputs
     const validation = validateInput(currentQuestion, inputValue);
     if (!validation.valid) {
       setError(validation.error || 'Invalid input');
@@ -58,19 +100,41 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
 
     // Trigger node creation if applicable
     if (currentQuestion.nodeCreation && onNodeCreate) {
-      onNodeCreate(currentQuestion.nodeCreation.type, {
-        [currentQuestion.nodeCreation.field || 'value']: parsedValue,
-        questionId: currentQuestion.id,
-      });
+      // Check if this is a dynamic volume question for a specific source
+      const volumeMatch = currentQuestion.id.match(/^q_volume_(.+)$/);
+      const spendMatch = currentQuestion.id.match(/^q_spend_(.+)$/);
+      
+      if (volumeMatch) {
+        const sourceId = volumeMatch[1];
+        const sourceOption = LEAD_SOURCE_OPTIONS.find(o => o.value === sourceId);
+        // Update the existing node with volume
+        onNodeCreate('lead-source-update', {
+          sourceId: sourceId,
+          volume: parsedValue,
+          label: `${sourceOption?.label || sourceId} - ${parsedValue}/mo`,
+        });
+      } else if (spendMatch) {
+        const sourceId = spendMatch[1];
+        // Update the existing node with spend
+        onNodeCreate('lead-source-update', {
+          sourceId: sourceId,
+          spend: parsedValue,
+        });
+      } else {
+        onNodeCreate(currentQuestion.nodeCreation.type, {
+          [currentQuestion.nodeCreation.field || 'value']: parsedValue,
+          questionId: currentQuestion.id,
+        });
+      }
     }
 
     // Reset
     setInputValue('');
     setError(null);
-  };
+  }, [currentQuestion, inputValue, multiSelectValue, answerQuestion, onNodeCreate, injectDynamicQuestions]);
 
   // Handle yes/no
-  const handleYesNo = (value: boolean) => {
+  const handleYesNo = useCallback((value: boolean) => {
     if (!currentQuestion) return;
     answerQuestion(value);
 
@@ -83,12 +147,12 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
 
     setInputValue('');
     setError(null);
-  };
+  }, [currentQuestion, answerQuestion, onNodeCreate]);
 
   // Handle select
-  const handleSelect = (value: string) => {
+  const handleSelect = useCallback((value: string) => {
     setInputValue(value);
-  };
+  }, []);
 
   // Validate input
   const validateInput = (question: Question, value: string): { valid: boolean; error?: string } => {
@@ -120,6 +184,18 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
     if (question.type === 'yes-no') return value ? 'Yes' : 'No';
     if (question.type === 'currency') return `$${Number(value).toLocaleString()}`;
     if (question.type === 'percentage') return `${value}%`;
+    if (question.type === 'multi-select') {
+      if (Array.isArray(value)) {
+        if (value.length <= 2) {
+          return value.map(v => {
+            const option = question.options?.find(o => o.value === v);
+            return option?.label || v;
+          }).join(', ');
+        }
+        return `${value.length} selected`;
+      }
+      return String(value);
+    }
     if (question.type === 'select') {
       const option = question.options?.find(o => o.value === value);
       return option?.label || value;
@@ -147,7 +223,7 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
               Ready to see the insights and revenue leakage analysis?
             </p>
             <div className="flex flex-col gap-2">
-              <Button variant="primary" className="gap-2">
+              <Button variant="default" className="gap-2">
                 View Metrics
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -236,7 +312,18 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
                 {currentQuestion.required && <span className="text-destructive ml-1">*</span>}
               </p>
 
-              {/* Input based on type */}
+              {/* Multi-select input */}
+              {currentQuestion.type === 'multi-select' && currentQuestion.options && (
+                <MultiSelectCheckbox
+                  options={currentQuestion.options}
+                  value={multiSelectValue}
+                  onChange={setMultiSelectValue}
+                  allowCustom={currentQuestion.allowCustom}
+                  maxHeight={280}
+                />
+              )}
+
+              {/* Text input */}
               {currentQuestion.type === 'text' && (
                 <Input
                   value={inputValue}
@@ -250,6 +337,7 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
                 />
               )}
 
+              {/* Number/Currency/Percentage inputs */}
               {(currentQuestion.type === 'number' || currentQuestion.type === 'currency' || currentQuestion.type === 'percentage') && (
                 <div className="relative">
                   {currentQuestion.type === 'currency' && (
@@ -278,6 +366,7 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
                 </div>
               )}
 
+              {/* Select input */}
               {currentQuestion.type === 'select' && currentQuestion.options && (
                 <Select value={inputValue} onValueChange={handleSelect}>
                   <SelectTrigger className={cn(error && 'border-destructive')}>
@@ -286,13 +375,21 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
                   <SelectContent>
                     {currentQuestion.options.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        <div className="flex items-center gap-2">
+                          <span>{option.label}</span>
+                          {option.category && (
+                            <span className="text-xs text-muted-foreground">
+                              ({option.category})
+                            </span>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
 
+              {/* Yes/No buttons */}
               {currentQuestion.type === 'yes-no' && (
                 <div className="flex gap-2">
                   <Button
@@ -328,11 +425,15 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
               {currentQuestion.type !== 'yes-no' && (
                 <div className="flex gap-2 mt-4">
                   <Button 
-                    variant="primary" 
+                    variant="default" 
                     size="sm" 
                     className="flex-1 gap-2"
                     onClick={handleSubmit}
-                    disabled={currentQuestion.required && !inputValue.trim()}
+                    disabled={
+                      currentQuestion.type === 'multi-select' 
+                        ? (currentQuestion.required && multiSelectValue.length === 0)
+                        : (currentQuestion.required && !inputValue.trim())
+                    }
                   >
                     Answer & Continue
                     <ArrowRight className="h-3 w-3" />
