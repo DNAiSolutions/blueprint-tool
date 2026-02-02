@@ -510,6 +510,18 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
         </div>
       </div>
 
+      {/* Sticky Add Node Button */}
+      <div className="p-4 border-t border-border bg-card">
+        <Button 
+          variant="default" 
+          className="w-full gap-2"
+          onClick={() => onNodeCreate?.('add-node-modal', {})}
+        >
+          <span className="text-lg">+</span>
+          Add Node
+        </Button>
+      </div>
+
       {/* Section progress at bottom */}
       <div className="p-4 border-t border-border">
         <div className="flex flex-wrap gap-1">
