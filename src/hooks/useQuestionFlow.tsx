@@ -14,6 +14,9 @@ const INITIAL_STATE: QuestionFlowState = {
   answers: {},
   completedSections: [],
   isComplete: false,
+  dynamicQuestions: [],
+  selectedLeadSources: [],
+  selectedIntakeMethods: [],
 };
 
 export function useQuestionFlow(sessionId?: string) {
@@ -32,13 +35,33 @@ export function useQuestionFlow(sessionId?: string) {
     return INITIAL_STATE;
   });
 
+  // Combine static questions with dynamic ones
+  const allQuestions = useMemo(() => {
+    const staticQuestions = [...QUESTIONS];
+    const dynamicQuestions = state.dynamicQuestions || [];
+    
+    // Find the index after q4 (lead sources multi-select) to inject dynamic questions
+    const q4Index = staticQuestions.findIndex(q => q.id === 'q4');
+    
+    if (q4Index !== -1 && dynamicQuestions.length > 0) {
+      // Insert dynamic questions after q4
+      return [
+        ...staticQuestions.slice(0, q4Index + 1),
+        ...dynamicQuestions.filter(dq => dq.section === 'lead-sources'),
+        ...staticQuestions.slice(q4Index + 1),
+      ];
+    }
+    
+    return staticQuestions;
+  }, [state.dynamicQuestions]);
+
   // Get questions that should be shown (respecting skip conditions)
   const activeQuestions = useMemo(() => {
-    return QUESTIONS.filter(q => {
+    return allQuestions.filter(q => {
       if (!q.skipCondition) return true;
       return !q.skipCondition(state.answers);
     });
-  }, [state.answers]);
+  }, [allQuestions, state.answers]);
 
   // Current question
   const currentQuestion = useMemo(() => {
@@ -88,8 +111,16 @@ export function useQuestionFlow(sessionId?: string) {
     return Math.round((answered / activeQuestions.length) * 100);
   }, [state.answers, activeQuestions]);
 
+  // Inject dynamic questions (called after multi-select answers)
+  const injectDynamicQuestions = useCallback((questions: Question[]) => {
+    setState(prev => ({
+      ...prev,
+      dynamicQuestions: [...(prev.dynamicQuestions || []), ...questions],
+    }));
+  }, []);
+
   // Answer current question
-  const answerQuestion = useCallback((value: string | number | boolean) => {
+  const answerQuestion = useCallback((value: string | number | boolean | string[]) => {
     if (!currentQuestion) return;
 
     setState(prev => {
@@ -102,24 +133,57 @@ export function useQuestionFlow(sessionId?: string) {
         },
       };
 
+      // Track selected lead sources for later use
+      let selectedLeadSources = prev.selectedLeadSources || [];
+      let selectedIntakeMethods = prev.selectedIntakeMethods || [];
+      
+      if (currentQuestion.id === 'q4' && Array.isArray(value)) {
+        selectedLeadSources = value;
+      }
+      if (currentQuestion.id === 'q_intake_methods' && Array.isArray(value)) {
+        selectedIntakeMethods = value;
+      }
+
       // Find next question index
       let nextIndex = prev.currentQuestionIndex + 1;
       
+      // We need to recalculate active questions with new answers
+      const updatedAllQuestions = [...QUESTIONS];
+      const dynamicQuestions = prev.dynamicQuestions || [];
+      const q4Index = updatedAllQuestions.findIndex(q => q.id === 'q4');
+      
+      let questionsToCheck: Question[];
+      if (q4Index !== -1 && dynamicQuestions.length > 0) {
+        questionsToCheck = [
+          ...updatedAllQuestions.slice(0, q4Index + 1),
+          ...dynamicQuestions.filter(dq => dq.section === 'lead-sources'),
+          ...updatedAllQuestions.slice(q4Index + 1),
+        ];
+      } else {
+        questionsToCheck = updatedAllQuestions;
+      }
+      
+      // Filter by skip conditions
+      const updatedActiveQuestions = questionsToCheck.filter(q => {
+        if (!q.skipCondition) return true;
+        return !q.skipCondition(newAnswers);
+      });
+      
       // Skip questions that should be skipped based on new answers
-      while (nextIndex < QUESTIONS.length) {
-        const nextQ = QUESTIONS[nextIndex];
-        if (nextQ.skipCondition && nextQ.skipCondition(newAnswers)) {
+      while (nextIndex < updatedActiveQuestions.length) {
+        const nextQ = updatedActiveQuestions[nextIndex];
+        if (nextQ?.skipCondition && nextQ.skipCondition(newAnswers)) {
           nextIndex++;
         } else {
           break;
         }
       }
 
-      const isComplete = nextIndex >= activeQuestions.length;
+      const isComplete = nextIndex >= updatedActiveQuestions.length;
 
       // Track completed sections
       const completedSections = [...prev.completedSections];
-      const sectionQuestions = activeQuestions.filter(q => q.section === currentQuestion.section);
+      const sectionQuestions = updatedActiveQuestions.filter(q => q.section === currentQuestion.section);
       const sectionAnswers = sectionQuestions.filter(q => newAnswers[q.id]);
       
       if (sectionAnswers.length === sectionQuestions.length && !completedSections.includes(currentQuestion.section)) {
@@ -133,9 +197,11 @@ export function useQuestionFlow(sessionId?: string) {
         completedSections,
         isComplete,
         lastSavedAt: new Date(),
+        selectedLeadSources,
+        selectedIntakeMethods,
       };
     });
-  }, [currentQuestion, activeQuestions]);
+  }, [currentQuestion]);
 
   // Skip current question (only if optional)
   const skipQuestion = useCallback(() => {
@@ -145,9 +211,9 @@ export function useQuestionFlow(sessionId?: string) {
       let nextIndex = prev.currentQuestionIndex + 1;
       
       // Skip questions that should be skipped
-      while (nextIndex < QUESTIONS.length) {
-        const nextQ = QUESTIONS[nextIndex];
-        if (nextQ.skipCondition && nextQ.skipCondition(prev.answers)) {
+      while (nextIndex < activeQuestions.length) {
+        const nextQ = activeQuestions[nextIndex];
+        if (nextQ?.skipCondition && nextQ.skipCondition(prev.answers)) {
           nextIndex++;
         } else {
           break;
@@ -217,6 +283,8 @@ export function useQuestionFlow(sessionId?: string) {
     progressPercent,
     isComplete: state.isComplete,
     answers: state.answers,
+    selectedLeadSources: state.selectedLeadSources,
+    selectedIntakeMethods: state.selectedIntakeMethods,
     
     // Computed
     answeredQuestions,
@@ -229,5 +297,6 @@ export function useQuestionFlow(sessionId?: string) {
     goToQuestion,
     getAnswer,
     reset,
+    injectDynamicQuestions,
   };
 }
