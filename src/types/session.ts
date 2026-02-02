@@ -47,6 +47,15 @@ export interface SessionNode {
   notes?: string;
   position: { x: number; y: number };
   connections: string[];
+  // Phase 3: Source-to-intake connections
+  sourceConnections?: string[];  // IDs of lead sources this intake is connected to
+  intakeConnections?: string[];  // IDs of intake methods this node connects to
+  // Phase 5: Leak detection
+  isLeak?: boolean;              // True if this is a major drop-off point
+  leakReason?: string;           // Why this is flagged as a leak
+  // Metadata
+  sourceId?: string;             // Original source value (e.g., 'google-ads')
+  spend?: number;                // Monthly spend (for paid sources)
 }
 
 export interface SessionMetrics {

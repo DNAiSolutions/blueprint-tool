@@ -13,26 +13,15 @@ import {
 } from 'lucide-react';
 import dnaiLogo from '@/assets/dnai-logo.png';
 import { QuestionPanel } from '@/components/canvas/QuestionPanel';
+import { CanvasNode } from '@/components/canvas/CanvasNode';
+import { ConnectorsSVG } from '@/components/canvas/CanvasConnector';
 import { SessionNode } from '@/types/session';
 import { 
   calculateFunnelPositions, 
   NODE_LEVELS, 
   FUNNEL_LEVELS,
-  calculateConnectorPath,
   getCanvasCenterX,
 } from '@/utils/funnelLayout';
-
-// Node type colors
-const NODE_COLORS: Record<string, string> = {
-  'lead-source': 'hsl(210, 70%, 55%)',    // Blue
-  'intake': 'hsl(270, 50%, 55%)',          // Purple
-  'decision': 'hsl(30, 75%, 55%)',         // Orange
-  'conversion': 'hsl(170, 65%, 45%)',      // Teal
-  'close': 'hsl(145, 60%, 45%)',           // Green
-  'fulfillment': 'hsl(220, 15%, 40%)',     // Dark Gray
-  'review': 'hsl(220, 15%, 40%)',          // Dark Gray
-  'custom': 'hsl(0, 0%, 50%)',             // Gray
-};
 
 export default function Canvas() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -60,6 +49,9 @@ export default function Canvas() {
     return calculateFunnelPositions(currentSession.nodes, centerX);
   }, [currentSession?.nodes, canvasWidth]);
 
+  // Selected node for highlighting connections
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
   // Handle node creation from question answers
   const handleNodeCreate = useCallback((nodeType: string, data: Record<string, any>) => {
     if (!currentSession) return;
@@ -67,12 +59,40 @@ export default function Canvas() {
     // Handle node updates (for volume/spend data)
     if (nodeType === 'lead-source-update') {
       const existingNode = currentSession.nodes.find(n => 
-        n.id === data.sourceId || n.label.includes(data.sourceId)
+        n.sourceId === data.sourceId
       );
       if (existingNode && updateNode) {
         updateNode(existingNode.id, {
-          volume: data.volume || existingNode.volume,
+          volume: data.volume ?? existingNode.volume,
           label: data.label || existingNode.label,
+          spend: data.spend ?? existingNode.spend,
+        });
+      }
+      return;
+    }
+
+    // Handle leak alerts
+    if (nodeType === 'leak-alert') {
+      addNode({
+        type: 'custom' as any,
+        label: data.label || 'Leak Point',
+        volume: 0,
+        conversionRate: 0,
+        value: 0,
+        position: { x: 0, y: 0 },
+        connections: [],
+        isLeak: true,
+        leakReason: data.leakReason,
+      });
+      return;
+    }
+
+    // Handle intake-to-source connection mapping
+    if (nodeType === 'intake-connection') {
+      const intakeNode = currentSession.nodes.find(n => n.sourceId === data.intakeId);
+      if (intakeNode && updateNode) {
+        updateNode(intakeNode.id, {
+          sourceConnections: [...(intakeNode.sourceConnections || []), data.leadSourceId],
         });
       }
       return;
@@ -85,8 +105,12 @@ export default function Canvas() {
       volume: data.volume || 0,
       conversionRate: data.conversionRate || 0,
       value: data.value || 0,
-      position: { x: 0, y: 0 }, // Will be recalculated by funnel layout
+      position: { x: 0, y: 0 },
       connections: [],
+      sourceId: data.sourceId,
+      spend: data.spend,
+      isLeak: data.isLeak,
+      leakReason: data.leakReason,
     });
   }, [currentSession, addNode, updateNode]);
 
@@ -200,71 +224,22 @@ export default function Canvas() {
 
           {/* SVG for Connectors */}
           {positionedNodes.length > 0 && (
-            <svg 
-              className="absolute inset-0 pointer-events-none"
-              style={{ width: '100%', height: '900px' }}
-            >
-              {positionedNodes.map((node) => 
-                node.connections?.map((targetId) => {
-                  const targetNode = positionedNodes.find(n => n.id === targetId);
-                  if (!targetNode) return null;
-                  
-                  const path = calculateConnectorPath(node, targetNode);
-                  return (
-                    <path
-                      key={`${node.id}-${targetId}`}
-                      d={path}
-                      stroke="hsl(var(--border))"
-                      strokeWidth="2"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                  );
-                })
-              )}
-            </svg>
+            <ConnectorsSVG 
+              nodes={positionedNodes} 
+              selectedNodeId={selectedNodeId || undefined}
+            />
           )}
 
           {/* Render Nodes */}
           {positionedNodes.length > 0 && (
             <div className="absolute inset-0 min-h-[900px]">
               {positionedNodes.map((node) => (
-                <div
+                <CanvasNode
                   key={node.id}
-                  className="absolute p-3 bg-card border-2 rounded-lg shadow-md min-w-[150px] max-w-[180px] transition-all hover:shadow-lg hover:scale-105"
-                  style={{
-                    left: node.position.x,
-                    top: node.position.y,
-                    borderColor: NODE_COLORS[node.type] || NODE_COLORS.custom,
-                  }}
-                >
-                  {/* Node Type Badge */}
-                  <div 
-                    className="absolute -top-2 left-3 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full text-white"
-                    style={{ backgroundColor: NODE_COLORS[node.type] || NODE_COLORS.custom }}
-                  >
-                    {node.type.replace('-', ' ')}
-                  </div>
-                  
-                  {/* Node Content */}
-                  <p className="text-sm font-medium mt-2 leading-tight">{node.label}</p>
-                  
-                  {/* Volume Badge */}
-                  {node.volume > 0 && (
-                    <div className="mt-2 flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">📊</span>
-                      <span className="text-xs font-medium text-foreground">{node.volume}/mo</span>
-                    </div>
-                  )}
-                  
-                  {/* Conversion Rate Badge */}
-                  {node.conversionRate > 0 && (
-                    <div className="mt-1 flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">📈</span>
-                      <span className="text-xs font-medium text-foreground">{node.conversionRate}%</span>
-                    </div>
-                  )}
-                </div>
+                  node={node}
+                  isSelected={node.id === selectedNodeId}
+                  onClick={(n) => setSelectedNodeId(n.id === selectedNodeId ? null : n.id)}
+                />
               ))}
             </div>
           )}
