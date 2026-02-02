@@ -140,29 +140,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const updateSession = useCallback((updates: Partial<AlignSession>) => {
-    if (!currentSession) return;
-    
-    const updated = {
-      ...currentSession,
-      ...updates,
-      updatedAt: new Date(),
-    };
-    
-    setCurrentSession(updated);
-    setSessions(prev => prev.map(s => s.id === updated.id ? updated : s));
-  }, [currentSession]);
+    setCurrentSession(prev => {
+      if (!prev) return prev;
+      
+      const updated = {
+        ...prev,
+        ...updates,
+        updatedAt: new Date(),
+      };
+      
+      setSessions(sessions => sessions.map(s => s.id === updated.id ? updated : s));
+      return updated;
+    });
+  }, []);
 
   const addNode = useCallback((node: Omit<SessionNode, 'id'>) => {
-    if (!currentSession) return;
-
-    const newNode: SessionNode = {
-      ...node,
-      id: generateId(),
-    };
-
-    const updatedNodes = [...currentSession.nodes, newNode];
-    updateSession({ nodes: updatedNodes, status: 'in-progress' });
-  }, [currentSession, updateSession]);
+    setCurrentSession(prev => {
+      if (!prev) return prev;
+      
+      const newNode: SessionNode = {
+        ...node,
+        id: generateId(),
+      };
+      
+      const updated = {
+        ...prev,
+        nodes: [...prev.nodes, newNode],
+        status: 'in-progress' as const,
+        updatedAt: new Date(),
+      };
+      
+      setSessions(sessions => sessions.map(s => s.id === updated.id ? updated : s));
+      return updated;
+    });
+  }, []);
 
   const updateNode = useCallback((nodeId: string, updates: Partial<SessionNode>) => {
     if (!currentSession) return;
