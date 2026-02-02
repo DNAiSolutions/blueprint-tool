@@ -14,6 +14,7 @@ interface SessionContextType {
   addNode: (node: Omit<SessionNode, 'id'>) => void;
   updateNode: (nodeId: string, updates: Partial<SessionNode>) => void;
   deleteNode: (nodeId: string) => void;
+  duplicateNode: (nodeId: string) => SessionNode | undefined;
   clearSession: () => void;
   loadSession: (sessionId: string) => void;
 }
@@ -177,13 +178,38 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!currentSession) return;
 
     const updatedNodes = currentSession.nodes.filter(node => node.id !== nodeId);
-    // Also remove connections to this node
+    // Also remove connections to this node + sourceConnections
     const cleanedNodes = updatedNodes.map(node => ({
       ...node,
       connections: node.connections.filter(id => id !== nodeId),
+      sourceConnections: node.sourceConnections?.filter(id => id !== nodeId),
     }));
     
     updateSession({ nodes: cleanedNodes });
+  }, [currentSession, updateSession]);
+
+  const duplicateNode = useCallback((nodeId: string) => {
+    if (!currentSession) return;
+
+    const nodeToDuplicate = currentSession.nodes.find(node => node.id === nodeId);
+    if (!nodeToDuplicate) return;
+
+    const newNode: SessionNode = {
+      ...nodeToDuplicate,
+      id: generateId(),
+      label: `${nodeToDuplicate.label} (copy)`,
+      position: {
+        x: nodeToDuplicate.position.x + 30,
+        y: nodeToDuplicate.position.y + 30,
+      },
+      connections: [], // Start with no connections
+      sourceConnections: undefined,
+    };
+
+    const updatedNodes = [...currentSession.nodes, newNode];
+    updateSession({ nodes: updatedNodes, status: 'in-progress' });
+    
+    return newNode;
   }, [currentSession, updateSession]);
 
   const clearSession = useCallback(() => {
@@ -241,6 +267,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         addNode,
         updateNode,
         deleteNode,
+        duplicateNode,
         clearSession,
         loadSession,
       }}

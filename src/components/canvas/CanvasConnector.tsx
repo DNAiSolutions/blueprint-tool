@@ -6,9 +6,20 @@ interface CanvasConnectorProps {
   toNode: SessionNode;
   isLeak?: boolean;
   isSelected?: boolean;
+  dropoffPercent?: number;
+  dropoffCount?: number;
+  onClick?: () => void;
 }
 
-export function CanvasConnector({ fromNode, toNode, isLeak, isSelected }: CanvasConnectorProps) {
+export function CanvasConnector({ 
+  fromNode, 
+  toNode, 
+  isLeak, 
+  isSelected,
+  dropoffPercent,
+  dropoffCount,
+  onClick,
+}: CanvasConnectorProps) {
   const path = calculateConnectorPath(fromNode, toNode);
   
   // Determine styling based on state
@@ -24,6 +35,21 @@ export function CanvasConnector({ fromNode, toNode, isLeak, isSelected }: Canvas
     strokeColor = 'hsl(170, 65%, 45%)'; // Teal
     strokeWidth = 3;
   }
+
+  // Calculate midpoint for label
+  const getMidpoint = () => {
+    const fromX = fromNode.position.x + 80; // Half node width
+    const fromY = fromNode.position.y + 60;
+    const toX = toNode.position.x + 80;
+    const toY = toNode.position.y;
+    return {
+      x: (fromX + toX) / 2,
+      y: (fromY + toY) / 2,
+    };
+  };
+
+  const midpoint = getMidpoint();
+  const showLabel = dropoffPercent !== undefined && dropoffPercent > 0;
   
   return (
     <g>
@@ -39,6 +65,16 @@ export function CanvasConnector({ fromNode, toNode, isLeak, isSelected }: Canvas
         />
       )}
       
+      {/* Clickable area (invisible, wider for easier clicking) */}
+      <path
+        d={path}
+        stroke="transparent"
+        strokeWidth="20"
+        fill="none"
+        style={{ cursor: onClick ? 'pointer' : 'default', pointerEvents: 'stroke' }}
+        onClick={onClick}
+      />
+      
       {/* Main connector line */}
       <path
         d={path}
@@ -48,6 +84,7 @@ export function CanvasConnector({ fromNode, toNode, isLeak, isSelected }: Canvas
         strokeLinecap="round"
         strokeDasharray={strokeDasharray === 'none' ? undefined : strokeDasharray}
         className={isLeak ? 'animate-pulse' : undefined}
+        style={{ pointerEvents: 'none' }}
       />
       
       {/* Arrow head at end */}
@@ -55,6 +92,34 @@ export function CanvasConnector({ fromNode, toNode, isLeak, isSelected }: Canvas
         path={path} 
         color={strokeColor}
       />
+
+      {/* Drop-off label */}
+      {showLabel && (
+        <g>
+          {/* Background rectangle */}
+          <rect
+            x={midpoint.x - 40}
+            y={midpoint.y - 10}
+            width={80}
+            height={20}
+            rx={4}
+            fill="hsl(var(--muted))"
+            stroke="hsl(var(--border))"
+            strokeWidth={1}
+          />
+          {/* Label text */}
+          <text
+            x={midpoint.x}
+            y={midpoint.y + 4}
+            textAnchor="middle"
+            fill={isLeak ? 'hsl(0, 70%, 55%)' : 'hsl(var(--muted-foreground))'}
+            fontSize={10}
+            fontWeight={isLeak ? 600 : 400}
+          >
+            {dropoffPercent}% drop{dropoffCount ? ` (${dropoffCount})` : ''}
+          </text>
+        </g>
+      )}
     </g>
   );
 }
@@ -88,9 +153,11 @@ function ArrowHead({ path, color }: { path: string; color: string }) {
 interface ConnectorsSVGProps {
   nodes: SessionNode[];
   selectedNodeId?: string;
+  nodeMetrics?: Record<string, { dropoff: number; dropoffPercent: number }>;
+  onConnectorClick?: (fromNodeId: string, toNodeId: string) => void;
 }
 
-export function ConnectorsSVG({ nodes, selectedNodeId }: ConnectorsSVGProps) {
+export function ConnectorsSVG({ nodes, selectedNodeId, nodeMetrics, onConnectorClick }: ConnectorsSVGProps) {
   // Build all connections
   const connections: Array<{
     from: SessionNode;
@@ -132,15 +199,21 @@ export function ConnectorsSVG({ nodes, selectedNodeId }: ConnectorsSVGProps) {
       className="absolute inset-0 pointer-events-none"
       style={{ width: '100%', height: '100%', minHeight: '900px' }}
     >
-      {connections.map((conn, idx) => (
-        <CanvasConnector
-          key={`${conn.from.id}-${conn.to.id}-${idx}`}
-          fromNode={conn.from}
-          toNode={conn.to}
-          isLeak={conn.isLeak}
-          isSelected={conn.isSelected}
-        />
-      ))}
+      {connections.map((conn, idx) => {
+        const toMetrics = nodeMetrics?.[conn.to.id];
+        return (
+          <CanvasConnector
+            key={`${conn.from.id}-${conn.to.id}-${idx}`}
+            fromNode={conn.from}
+            toNode={conn.to}
+            isLeak={conn.isLeak}
+            isSelected={conn.isSelected}
+            dropoffPercent={toMetrics?.dropoffPercent}
+            dropoffCount={toMetrics?.dropoff}
+            onClick={onConnectorClick ? () => onConnectorClick(conn.from.id, conn.to.id) : undefined}
+          />
+        );
+      })}
     </svg>
   );
 }

@@ -1,10 +1,18 @@
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '@/hooks/useSession';
 import { useAuth } from '@/hooks/useAuth';
+import { useMetricsCalculator, formatCurrency } from '@/hooks/useMetricsCalculator';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { 
   ArrowLeft, 
   Save, 
@@ -15,12 +23,18 @@ import {
   Link as LinkIcon,
   Unlink,
   Loader2,
+  Edit,
+  Trash2,
+  Copy,
+  AlertTriangle,
 } from 'lucide-react';
 import dnaiLogo from '@/assets/dnai-logo.png';
 import { QuestionPanel } from '@/components/canvas/QuestionPanel';
 import { CanvasNode } from '@/components/canvas/CanvasNode';
 import { ConnectorsSVG } from '@/components/canvas/CanvasConnector';
-import { SessionNode } from '@/types/session';
+import { NodeEditModal } from '@/components/canvas/NodeEditModal';
+import { AddNodeModal } from '@/components/canvas/AddNodeModal';
+import { SessionNode, NodeType } from '@/types/session';
 import { 
   calculateFunnelPositions, 
   NODE_LEVELS, 
@@ -29,28 +43,40 @@ import {
 } from '@/utils/funnelLayout';
 import { toast } from 'sonner';
 
+// Auto-save interval in milliseconds
+const AUTO_SAVE_INTERVAL = 30000;
+
 export default function Canvas() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { currentSession, loadSession, addNode, updateNode, isSessionReady } = useSession();
+  const { currentSession, loadSession, addNode, updateNode, deleteNode, duplicateNode, isSessionReady } = useSession();
   const { user } = useAuth();
   const [canvasWidth, setCanvasWidth] = useState(1000);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   // Connect mode state
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [pendingFromNodeId, setPendingFromNodeId] = useState<string | null>(null);
+
+  // Modal states
+  const [editingNode, setEditingNode] = useState<SessionNode | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Context menu state
+  const [contextMenuNode, setContextMenuNode] = useState<SessionNode | null>(null);
+
+  // Selected node for highlighting
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  // Auto-save state
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   useEffect(() => {
     if (sessionId) {
       loadSession(sessionId);
     }
   }, [sessionId, loadSession]);
-
-  // Redirect if no session found
-  if (!sessionId) {
-    navigate('/');
-    return null;
-  }
 
   // Calculate positioned nodes
   const positionedNodes = useMemo(() => {
@@ -59,8 +85,83 @@ export default function Canvas() {
     return calculateFunnelPositions(currentSession.nodes, centerX);
   }, [currentSession?.nodes, canvasWidth]);
 
-  // Selected node for highlighting connections
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Calculate metrics
+  const metrics = useMetricsCalculator(currentSession?.nodes || []);
+
+  // Auto-save effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentSession && currentSession.nodes.length > 0) {
+        // Session is already being saved to localStorage by useSession
+        setLastSaved(new Date());
+        toast.success('Saved', { duration: 2000 });
+      }
+    }, AUTO_SAVE_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [currentSession]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case 'Escape':
+          // Deselect node, exit connect mode
+          setSelectedNodeId(null);
+          setIsConnectMode(false);
+          setPendingFromNodeId(null);
+          break;
+        case 'Tab':
+          // Cycle through nodes
+          e.preventDefault();
+          if (positionedNodes.length > 0) {
+            const currentIndex = positionedNodes.findIndex(n => n.id === selectedNodeId);
+            const nextIndex = e.shiftKey
+              ? (currentIndex - 1 + positionedNodes.length) % positionedNodes.length
+              : (currentIndex + 1) % positionedNodes.length;
+            setSelectedNodeId(positionedNodes[nextIndex].id);
+          }
+          break;
+        case 'Enter':
+          // Open edit modal for selected node
+          if (selectedNodeId) {
+            const node = positionedNodes.find(n => n.id === selectedNodeId);
+            if (node) {
+              setEditingNode(node);
+              setShowEditModal(true);
+            }
+          }
+          break;
+        case 'Delete':
+        case 'Backspace':
+          // Delete selected node
+          if (selectedNodeId && !showEditModal && !showAddModal) {
+            e.preventDefault();
+            const node = positionedNodes.find(n => n.id === selectedNodeId);
+            if (node && window.confirm(`Delete "${node.label}"?`)) {
+              deleteNode(selectedNodeId);
+              setSelectedNodeId(null);
+              toast.success('Node deleted');
+            }
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [positionedNodes, selectedNodeId, deleteNode, showEditModal, showAddModal]);
+
+  // Redirect if no session found
+  if (!sessionId) {
+    navigate('/');
+    return null;
+  }
 
   // Handle node click - different behavior in connect mode
   const handleNodeClick = useCallback((node: SessionNode) => {
@@ -101,6 +202,48 @@ export default function Canvas() {
     }
   }, [isConnectMode, pendingFromNodeId, currentSession?.nodes, updateNode, selectedNodeId]);
 
+  // Handle double-click to edit
+  const handleNodeDoubleClick = useCallback((node: SessionNode) => {
+    setEditingNode(node);
+    setShowEditModal(true);
+  }, []);
+
+  // Handle node drag end
+  const handleNodeDragEnd = useCallback((nodeId: string, position: { x: number; y: number }) => {
+    updateNode(nodeId, { position });
+  }, [updateNode]);
+
+  // Handle context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent, node: SessionNode) => {
+    setContextMenuNode(node);
+    setSelectedNodeId(node.id);
+  }, []);
+
+  // Context menu actions
+  const handleEditFromContext = useCallback(() => {
+    if (contextMenuNode) {
+      setEditingNode(contextMenuNode);
+      setShowEditModal(true);
+    }
+  }, [contextMenuNode]);
+
+  const handleDeleteFromContext = useCallback(() => {
+    if (contextMenuNode && window.confirm(`Delete "${contextMenuNode.label}"?`)) {
+      deleteNode(contextMenuNode.id);
+      setSelectedNodeId(null);
+      toast.success('Node deleted');
+    }
+  }, [contextMenuNode, deleteNode]);
+
+  const handleDuplicateFromContext = useCallback(() => {
+    if (contextMenuNode) {
+      const newNode = duplicateNode(contextMenuNode.id);
+      if (newNode) {
+        toast.success(`Duplicated "${contextMenuNode.label}"`);
+      }
+    }
+  }, [contextMenuNode, duplicateNode]);
+
   // Clear connections for selected node
   const handleClearConnections = useCallback(() => {
     if (!selectedNodeId || !currentSession) return;
@@ -112,10 +255,33 @@ export default function Canvas() {
     }
   }, [selectedNodeId, currentSession, updateNode]);
 
+  // Handle connector click - remove connection
+  const handleConnectorClick = useCallback((fromNodeId: string, toNodeId: string) => {
+    const fromNode = currentSession?.nodes.find(n => n.id === fromNodeId);
+    if (fromNode && window.confirm('Remove this connection?')) {
+      updateNode(fromNodeId, {
+        connections: fromNode.connections.filter(id => id !== toNodeId),
+      });
+      toast.success('Connection removed');
+    }
+  }, [currentSession?.nodes, updateNode]);
+
+  // Handle manual save
+  const handleManualSave = useCallback(() => {
+    setLastSaved(new Date());
+    toast.success('Saved', { duration: 2000 });
+  }, []);
+
   // Handle node creation from question answers
   const handleNodeCreate = useCallback((nodeType: string, data: Record<string, any>) => {
     if (!currentSession) {
       console.warn('Cannot create node: session not loaded');
+      return;
+    }
+
+    // Handle opening add node modal
+    if (nodeType === 'add-node-modal') {
+      setShowAddModal(true);
       return;
     }
     
@@ -181,6 +347,40 @@ export default function Canvas() {
     });
   }, [currentSession, addNode, updateNode]);
 
+  // Handle adding node from modal
+  const handleAddNode = useCallback((nodeData: {
+    type: NodeType;
+    label: string;
+    volume: number;
+    conversionRate: number;
+    spend?: number;
+  }) => {
+    addNode({
+      type: nodeData.type,
+      label: nodeData.label,
+      volume: nodeData.volume,
+      conversionRate: nodeData.conversionRate,
+      value: 0,
+      position: { x: 0, y: 0 },
+      connections: [],
+      spend: nodeData.spend,
+    });
+    toast.success(`Added "${nodeData.label}"`);
+  }, [addNode]);
+
+  // Handle editing node from modal
+  const handleEditNode = useCallback((nodeId: string, updates: Partial<SessionNode>) => {
+    updateNode(nodeId, updates);
+    toast.success('Node updated');
+  }, [updateNode]);
+
+  // Handle deleting node from modal
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    deleteNode(nodeId);
+    setSelectedNodeId(null);
+    toast.success('Node deleted');
+  }, [deleteNode]);
+
   // Get the "from" node for connect mode indicator
   const pendingFromNode = pendingFromNodeId 
     ? currentSession?.nodes.find(n => n.id === pendingFromNodeId) 
@@ -220,7 +420,7 @@ export default function Canvas() {
 
         {/* Header Actions */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-2">
+          <Button variant="ghost" size="sm" className="gap-2" onClick={handleManualSave}>
             <Save className="h-4 w-4" />
             <span className="hidden sm:inline">Save</span>
           </Button>
@@ -251,15 +451,16 @@ export default function Canvas() {
 
         {/* Center Canvas */}
         <main 
-          className="flex-1 relative overflow-auto bg-background"
-          ref={(el) => {
-            if (el) {
-              const width = el.clientWidth;
-              if (width !== canvasWidth) {
-                setCanvasWidth(width);
-              }
+          ref={canvasRef}
+          className="flex-1 relative overflow-auto bg-background focus:outline-none"
+          tabIndex={0}
+          onClick={() => {
+            // Deselect when clicking on empty canvas
+            if (!isConnectMode) {
+              setSelectedNodeId(null);
             }
           }}
+          onContextMenu={(e) => e.preventDefault()}
         >
           {/* Canvas Grid Background */}
           <div 
@@ -270,6 +471,14 @@ export default function Canvas() {
                 linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
               `,
               backgroundSize: '24px 24px',
+            }}
+            ref={(el) => {
+              if (el) {
+                const width = el.clientWidth;
+                if (width !== canvasWidth) {
+                  setCanvasWidth(width);
+                }
+              }
             }}
           />
 
@@ -309,6 +518,10 @@ export default function Canvas() {
                 <p className="mb-6 text-muted-foreground text-sm">
                   Answer the questions on the left to guide your discovery call. Nodes will be created automatically as you progress.
                 </p>
+                <Button onClick={() => setShowAddModal(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Node Manually
+                </Button>
               </div>
             </div>
           )}
@@ -318,19 +531,59 @@ export default function Canvas() {
             <ConnectorsSVG 
               nodes={positionedNodes} 
               selectedNodeId={selectedNodeId || undefined}
+              nodeMetrics={metrics.nodeMetrics}
+              onConnectorClick={handleConnectorClick}
             />
           )}
 
-          {/* Render Nodes */}
+          {/* Render Nodes with Context Menu */}
           {positionedNodes.length > 0 && (
             <div className="absolute inset-0 min-h-[900px]">
               {positionedNodes.map((node) => (
-                <CanvasNode
-                  key={node.id}
-                  node={node}
-                  isSelected={node.id === selectedNodeId || node.id === pendingFromNodeId}
-                  onClick={() => handleNodeClick(node)}
-                />
+                <ContextMenu key={node.id}>
+                  <ContextMenuTrigger asChild>
+                    <div>
+                      <CanvasNode
+                        node={node}
+                        isSelected={node.id === selectedNodeId || node.id === pendingFromNodeId}
+                        onClick={handleNodeClick}
+                        onDoubleClick={handleNodeDoubleClick}
+                        onDragEnd={handleNodeDragEnd}
+                        onContextMenu={handleContextMenu}
+                      />
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => {
+                      setEditingNode(node);
+                      setShowEditModal(true);
+                    }}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => {
+                      duplicateNode(node.id);
+                      toast.success(`Duplicated "${node.label}"`);
+                    }}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Duplicate
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem 
+                      onClick={() => {
+                        if (window.confirm(`Delete "${node.label}"?`)) {
+                          deleteNode(node.id);
+                          setSelectedNodeId(null);
+                          toast.success('Node deleted');
+                        }
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               ))}
             </div>
           )}
@@ -398,7 +651,7 @@ export default function Canvas() {
             </h2>
           </div>
 
-          {/* Metrics Content - Placeholder */}
+          {/* Metrics Content */}
           <div className="flex-1 overflow-auto p-4 scrollbar-thin">
             <div className="space-y-6">
               {/* Funnel Breakdown */}
@@ -426,22 +679,38 @@ export default function Canvas() {
                 )}
               </div>
 
-              {/* Top Leak Alert - Hidden until data */}
-              <div className="p-4 rounded-lg border-2 border-dashed border-destructive/30 bg-destructive/5">
-                <h3 className="text-xs font-semibold text-destructive uppercase tracking-wider mb-2">
-                  Top Leak
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Leaks will appear here once you add conversion data
-                </p>
-              </div>
+              {/* Top Leak Alert */}
+              {metrics.biggestLeak ? (
+                <div className="p-4 rounded-lg border-2 border-destructive/50 bg-destructive/10 animate-pulse">
+                  <h3 className="text-xs font-semibold text-destructive uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Top Leak
+                  </h3>
+                  <p className="text-sm font-medium text-foreground">{metrics.biggestLeak.stageName}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{metrics.biggestLeak.reason}</p>
+                  <p className="text-sm font-bold text-destructive mt-2">
+                    {formatCurrency(metrics.biggestLeak.impact)}/mo at risk
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg border-2 border-dashed border-destructive/30 bg-destructive/5">
+                  <h3 className="text-xs font-semibold text-destructive uppercase tracking-wider mb-2">
+                    Top Leak
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Leaks will appear here once you add conversion data
+                  </p>
+                </div>
+              )}
 
               {/* Revenue at Risk */}
               <div className="p-4 rounded-lg bg-muted/50">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Revenue at Risk
                 </h3>
-                <p className="text-2xl font-bold text-foreground">$0</p>
+                <p className={`text-2xl font-bold ${metrics.totalRevenueAtRisk > 0 ? 'text-destructive' : 'text-foreground'}`}>
+                  {formatCurrency(metrics.totalRevenueAtRisk)}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Total monthly leakage
                 </p>
@@ -450,6 +719,21 @@ export default function Canvas() {
           </div>
         </aside>
       </div>
+
+      {/* Modals */}
+      <NodeEditModal
+        node={editingNode}
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onSave={handleEditNode}
+        onDelete={handleDeleteNode}
+      />
+
+      <AddNodeModal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        onAdd={handleAddNode}
+      />
     </div>
   );
 }

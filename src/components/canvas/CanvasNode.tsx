@@ -1,3 +1,4 @@
+import { useState, useCallback, useRef } from 'react';
 import { SessionNode } from '@/types/session';
 import { cn } from '@/lib/utils';
 
@@ -19,11 +20,26 @@ interface CanvasNodeProps {
   node: SessionNode;
   isSelected?: boolean;
   onClick?: (node: SessionNode) => void;
+  onDoubleClick?: (node: SessionNode) => void;
+  onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
+  onContextMenu?: (e: React.MouseEvent, node: SessionNode) => void;
 }
 
-export function CanvasNode({ node, isSelected, onClick }: CanvasNodeProps) {
+export function CanvasNode({ 
+  node, 
+  isSelected, 
+  onClick, 
+  onDoubleClick,
+  onDragEnd,
+  onContextMenu,
+}: CanvasNodeProps) {
   const colors = node.isLeak ? LEAK_COLOR : (NODE_COLORS[node.type] || NODE_COLORS.custom);
-  
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragPosition, setDragPosition] = useState({ x: node.position.x, y: node.position.y });
+  const clickTimeRef = useRef<number>(0);
+  const clickNodeRef = useRef<string>('');
+
   // Get type icon
   const getTypeIcon = () => {
     const icons: Record<string, string> = {
@@ -46,22 +62,114 @@ export function CanvasNode({ node, isSelected, onClick }: CanvasNodeProps) {
     return 'text-red-600 dark:text-red-400';
   };
 
+  // Handle mouse down for dragging
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only left click
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = (e.target as HTMLElement).closest('.canvas-node')?.getBoundingClientRect();
+    if (!rect) return;
+
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+    setIsDragging(true);
+    setDragPosition({ x: node.position.x, y: node.position.y });
+  }, [node.position.x, node.position.y]);
+
+  // Handle mouse move while dragging
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const canvas = document.querySelector('main.flex-1');
+    if (!canvas) return;
+    
+    const canvasRect = canvas.getBoundingClientRect();
+    const scrollLeft = canvas.scrollLeft;
+    const scrollTop = canvas.scrollTop;
+    
+    const newX = e.clientX - canvasRect.left + scrollLeft - dragOffset.x;
+    const newY = e.clientY - canvasRect.top + scrollTop - dragOffset.y;
+    
+    setDragPosition({
+      x: Math.max(0, newX),
+      y: Math.max(0, newY),
+    });
+  }, [isDragging, dragOffset]);
+
+  // Handle mouse up - end dragging
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      if (onDragEnd) {
+        onDragEnd(node.id, dragPosition);
+      }
+    }
+  }, [isDragging, dragPosition, node.id, onDragEnd]);
+
+  // Attach global listeners when dragging
+  useState(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  });
+
+  // Handle click with double-click detection
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const now = Date.now();
+    const isDoubleClick = 
+      clickNodeRef.current === node.id && 
+      now - clickTimeRef.current < 300;
+    
+    clickTimeRef.current = now;
+    clickNodeRef.current = node.id;
+    
+    if (isDoubleClick && onDoubleClick) {
+      onDoubleClick(node);
+    } else if (onClick) {
+      onClick(node);
+    }
+  }, [node, onClick, onDoubleClick]);
+
+  // Handle right-click
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e, node);
+    }
+  }, [node, onContextMenu]);
+
+  const displayPosition = isDragging ? dragPosition : node.position;
+
   return (
     <div
       className={cn(
-        "absolute p-3 bg-card rounded-lg shadow-md min-w-[150px] max-w-[200px] transition-all cursor-pointer",
-        "hover:shadow-lg hover:scale-105",
+        "canvas-node absolute p-3 bg-card rounded-lg shadow-md min-w-[150px] max-w-[200px] transition-all select-none",
+        isDragging ? "cursor-grabbing opacity-80 shadow-xl z-50" : "cursor-grab hover:shadow-lg hover:scale-105",
         isSelected && "ring-2 ring-accent ring-offset-2",
         node.isLeak && "animate-pulse"
       )}
       style={{
-        left: node.position.x,
-        top: node.position.y,
+        left: displayPosition.x,
+        top: displayPosition.y,
         borderWidth: '2px',
         borderStyle: node.isLeak ? 'dashed' : 'solid',
         borderColor: colors.border,
       }}
-      onClick={() => onClick?.(node)}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onContextMenu={handleContextMenu}
     >
       {/* Node Type Badge */}
       <div 
