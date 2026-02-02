@@ -40,19 +40,39 @@ export function useQuestionFlow(sessionId?: string) {
     const staticQuestions = [...QUESTIONS];
     const dynamicQuestions = state.dynamicQuestions || [];
     
-    // Find the index after q4 (lead sources multi-select) to inject dynamic questions
-    const q4Index = staticQuestions.findIndex(q => q.id === 'q4');
+    if (dynamicQuestions.length === 0) return staticQuestions;
     
-    if (q4Index !== -1 && dynamicQuestions.length > 0) {
-      // Insert dynamic questions after q4
-      return [
-        ...staticQuestions.slice(0, q4Index + 1),
-        ...dynamicQuestions.filter(dq => dq.section === 'lead-sources'),
-        ...staticQuestions.slice(q4Index + 1),
+    // Separate dynamic questions by section
+    const leadSourceDynamic = dynamicQuestions.filter(dq => dq.section === 'lead-sources');
+    const leadHandlingDynamic = dynamicQuestions.filter(dq => dq.section === 'lead-handling');
+    
+    // Find insertion points
+    const q4Index = staticQuestions.findIndex(q => q.id === 'q4');
+    const intakeIndex = staticQuestions.findIndex(q => q.id === 'q_intake_methods');
+    
+    let result = [...staticQuestions];
+    
+    // Insert lead source follow-ups after q4
+    if (q4Index !== -1 && leadSourceDynamic.length > 0) {
+      result = [
+        ...result.slice(0, q4Index + 1),
+        ...leadSourceDynamic,
+        ...result.slice(q4Index + 1),
       ];
     }
     
-    return staticQuestions;
+    // Insert intake mapping questions after q_intake_methods
+    // Need to recalculate index since we may have added questions
+    const newIntakeIndex = result.findIndex(q => q.id === 'q_intake_methods');
+    if (newIntakeIndex !== -1 && leadHandlingDynamic.length > 0) {
+      result = [
+        ...result.slice(0, newIntakeIndex + 1),
+        ...leadHandlingDynamic,
+        ...result.slice(newIntakeIndex + 1),
+      ];
+    }
+    
+    return result;
   }, [state.dynamicQuestions]);
 
   // Get questions that should be shown (respecting skip conditions)

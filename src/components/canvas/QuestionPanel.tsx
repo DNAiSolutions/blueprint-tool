@@ -13,11 +13,14 @@ import {
   QuestionSection, 
   SECTION_META,
   LEAD_SOURCE_OPTIONS,
+  INTAKE_METHOD_OPTIONS,
+  FOLLOW_UP_OPTIONS,
   generateLeadSourceFollowUps,
+  generateIntakeMappingQuestions,
 } from '@/types/questions';
 import { useQuestionFlow } from '@/hooks/useQuestionFlow';
 import { MultiSelectCheckbox } from '@/components/ui/multi-select-checkbox';
-import { ChevronDown, ChevronUp, Check, ArrowRight, SkipForward } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, ArrowRight, SkipForward, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QuestionPanelProps {
@@ -37,6 +40,8 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
     answerQuestion,
     skipQuestion,
     injectDynamicQuestions,
+    selectedLeadSources,
+    selectedIntakeMethods,
   } = useQuestionFlow(sessionId);
 
   const [inputValue, setInputValue] = useState('');
@@ -58,10 +63,19 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
       // Submit the multi-select answer
       answerQuestion(multiSelectValue);
 
-      // If this question triggers dynamic follow-ups (e.g., lead sources)
+      // If this question triggers dynamic follow-ups for lead sources (q4)
       if (currentQuestion.dynamicFollowUp && currentQuestion.id === 'q4') {
         const followUpQuestions = generateLeadSourceFollowUps(multiSelectValue);
         injectDynamicQuestions(followUpQuestions);
+      }
+
+      // If this is intake methods (q_intake_methods), generate mapping questions
+      if (currentQuestion.dynamicFollowUp && currentQuestion.id === 'q_intake_methods') {
+        // Generate mapping questions: "Which intake methods apply to {source}?"
+        if (selectedLeadSources && selectedLeadSources.length > 0) {
+          const mappingQuestions = generateIntakeMappingQuestions(selectedLeadSources, multiSelectValue);
+          injectDynamicQuestions(mappingQuestions);
+        }
       }
 
       // Create nodes for each selection if applicable
@@ -74,6 +88,16 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
             label: label,
             questionId: currentQuestion.id,
           });
+        });
+      }
+
+      // Check for leak detection - if "nothing" is selected in follow-up
+      if (currentQuestion.id === 'q9' && multiSelectValue.includes('nothing')) {
+        // Flag this as a leak point
+        onNodeCreate?.('leak-alert', {
+          label: 'No Follow-Up (LEAK)',
+          isLeak: true,
+          leakReason: 'Leads who don\'t answer are not followed up',
         });
       }
 
