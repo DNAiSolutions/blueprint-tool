@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '@/hooks/useSession';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,11 +12,12 @@ import {
   FileDown,
 } from 'lucide-react';
 import dnaiLogo from '@/assets/dnai-logo.png';
+import { QuestionPanel } from '@/components/canvas/QuestionPanel';
 
 export default function Canvas() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { currentSession, loadSession } = useSession();
+  const { currentSession, loadSession, addNode } = useSession();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -30,6 +31,22 @@ export default function Canvas() {
     navigate('/');
     return null;
   }
+
+  // Handle node creation from question answers
+  const handleNodeCreate = useCallback((nodeType: string, data: Record<string, any>) => {
+    if (!currentSession) return;
+    
+    // Create node based on type and data
+    addNode({
+      type: nodeType as any,
+      label: getNodeLabel(nodeType),
+      volume: data.volume || 0,
+      conversionRate: data.conversionRate || 0,
+      value: data.value || 0,
+      position: calculateNodePosition(currentSession.nodes.length),
+      connections: [],
+    });
+  }, [currentSession, addNode]);
 
   const displayName = user?.user_metadata?.full_name || user?.email || 'Unknown';
 
@@ -80,87 +97,11 @@ export default function Canvas() {
       {/* Main Canvas Area - 3 Column Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Questions Panel */}
-        <aside className="w-72 border-r border-border bg-card flex flex-col shrink-0 hidden lg:flex">
-          <div className="p-4 border-b border-border">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
-              <span className="text-lg">📋</span>
-              Questions
-            </h2>
-          </div>
-          
-          {/* Questions List - Placeholder */}
-          <div className="flex-1 overflow-auto p-4 scrollbar-thin">
-            <div className="space-y-3">
-              {/* Completed Question */}
-              <div className="p-3 rounded-lg bg-success/10 border border-success/20">
-                <div className="flex items-center gap-2 text-success text-sm font-medium mb-1">
-                  <span>✓</span>
-                  Goals & Context
-                </div>
-                <p className="text-xs text-muted-foreground">Completed</p>
-              </div>
-
-              {/* Active Question */}
-              <div className="p-3 rounded-lg bg-accent/10 border-l-2 border-accent">
-                <div className="flex items-center gap-2 text-accent text-sm font-medium mb-2">
-                  <span>▶</span>
-                  Lead Sources
-                </div>
-                <p className="text-sm text-foreground mb-3">
-                  How many leads do you get per month?
-                </p>
-                <input 
-                  type="text" 
-                  placeholder="e.g., 500"
-                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
-                />
-                <Button variant="primary" size="sm" className="w-full mt-3">
-                  Answer & Continue
-                </Button>
-              </div>
-
-              {/* Waiting Questions */}
-              <div className="p-3 rounded-lg bg-muted/50 opacity-60">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
-                  <span>•</span>
-                  Lead Handling
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Waiting</p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-muted/50 opacity-60">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
-                  <span>•</span>
-                  Qualification
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Waiting</p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-muted/50 opacity-60">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
-                  <span>•</span>
-                  Conversion Events
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Waiting</p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-muted/50 opacity-60">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
-                  <span>•</span>
-                  Fulfillment
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Waiting</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Add Node Button */}
-          <div className="p-4 border-t border-border">
-            <Button variant="primary" className="w-full gap-2">
-              <Plus className="h-4 w-4" />
-              Add Node
-            </Button>
-          </div>
+        <aside className="w-80 border-r border-border bg-card flex flex-col shrink-0 hidden lg:flex">
+          <QuestionPanel 
+            sessionId={sessionId} 
+            onNodeCreate={handleNodeCreate}
+          />
         </aside>
 
         {/* Center Canvas */}
@@ -178,23 +119,43 @@ export default function Canvas() {
           />
 
           {/* Canvas Content - Empty State */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center max-w-md p-8">
-              <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/10 border border-accent/20">
-                <Plus className="h-10 w-10 text-accent" />
+          {(!currentSession?.nodes || currentSession.nodes.length === 0) && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center max-w-md p-8">
+                <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/10 border border-accent/20">
+                  <Plus className="h-10 w-10 text-accent" />
+                </div>
+                <h2 className="mb-2 text-h3 text-foreground">
+                  Start Building Your Map
+                </h2>
+                <p className="mb-6 text-muted-foreground text-sm">
+                  Answer the questions on the left to guide your discovery call. Nodes will be created automatically as you progress.
+                </p>
               </div>
-              <h2 className="mb-2 text-h3 text-foreground">
-                Start Building Your Map
-              </h2>
-              <p className="mb-6 text-muted-foreground text-sm">
-                Use the questions on the left to guide your discovery call. Add nodes to map the prospect's business process.
-              </p>
-              <Button variant="primary" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add First Node
-              </Button>
             </div>
-          </div>
+          )}
+
+          {/* TODO: Render nodes when they exist */}
+          {currentSession?.nodes && currentSession.nodes.length > 0 && (
+            <div className="absolute inset-0 p-8">
+              {/* Nodes will be rendered here */}
+              {currentSession.nodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="absolute p-4 bg-card border-2 border-accent rounded-lg shadow-level-2 min-w-[160px]"
+                  style={{
+                    left: node.position.x,
+                    top: node.position.y,
+                  }}
+                >
+                  <p className="text-sm font-medium">{node.label}</p>
+                  {node.volume > 0 && (
+                    <p className="text-xs text-muted-foreground">{node.volume}/mo</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Canvas Action Bar */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-xl bg-card border border-border shadow-level-3">
@@ -230,7 +191,7 @@ export default function Canvas() {
                 <div className="text-center py-8 text-muted-foreground">
                   <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
                   <p className="text-sm">No data yet</p>
-                  <p className="text-xs">Add nodes to see metrics</p>
+                  <p className="text-xs">Answer questions to see metrics</p>
                 </div>
               </div>
 
@@ -260,4 +221,32 @@ export default function Canvas() {
       </div>
     </div>
   );
+}
+
+// Helper: Get node label from type
+function getNodeLabel(nodeType: string): string {
+  const labels: Record<string, string> = {
+    'lead-source': 'Lead Source',
+    'intake': 'Intake',
+    'decision': 'Qualification',
+    'conversion': 'Conversion',
+    'close': 'Close',
+    'fulfillment': 'Fulfillment',
+    'review': 'Reviews & Referrals',
+  };
+  return labels[nodeType] || 'Custom';
+}
+
+// Helper: Calculate node position
+function calculateNodePosition(existingCount: number): { x: number; y: number } {
+  const baseX = 100;
+  const baseY = 100;
+  const offsetX = 200;
+  const offsetY = 120;
+  
+  // Simple left-to-right, slight diagonal layout
+  return {
+    x: baseX + (existingCount * offsetX),
+    y: baseY + (existingCount * offsetY * 0.5),
+  };
 }
