@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -24,7 +26,7 @@ import {
   Clock,
   Building2,
 } from 'lucide-react';
-import { INDUSTRY_OPTIONS, Industry } from '@/types/session';
+import { INDUSTRY_CATEGORIES, IndustryCategory } from '@/types/session';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -32,7 +34,7 @@ export default function Dashboard() {
   const { createSession, sessions } = useSession();
   
   const [clientName, setClientName] = useState('');
-  const [industry, setIndustry] = useState<Industry | ''>('');
+  const [industry, setIndustry] = useState<IndustryCategory | ''>('');
   const [isCreating, setIsCreating] = useState(false);
 
   const displayName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
@@ -168,20 +170,30 @@ export default function Dashboard() {
                   <Label htmlFor="industry" className="text-sm font-medium">
                     Industry <span className="text-muted-foreground">(Optional)</span>
                   </Label>
-                  <Select value={industry} onValueChange={(val) => setIndustry(val as Industry)}>
+                  <Select value={industry} onValueChange={(val) => setIndustry(val as IndustryCategory)}>
                     <SelectTrigger id="industry" className="h-11">
                       <SelectValue placeholder="Select an industry..." />
                     </SelectTrigger>
-                    <SelectContent>
-                      {INDUSTRY_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
+                    <SelectContent className="max-h-80">
+                      {INDUSTRY_CATEGORIES.map((category) => (
+                        <SelectGroup key={category.value}>
+                          <SelectItem value={category.value} className="py-3">
+                            <div className="flex items-start gap-2">
+                              <span className="text-base">{category.icon}</span>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{category.label}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {category.examples.slice(0, 3).join(', ')}...
+                                </span>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Selecting an industry helps pre-load relevant questions and templates.
+                    AI will customize questions and templates based on your industry.
                   </p>
                 </div>
 
