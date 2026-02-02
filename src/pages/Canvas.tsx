@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '@/hooks/useSession';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft, 
   Save, 
@@ -10,6 +12,9 @@ import {
   Plus,
   BarChart3,
   FileDown,
+  Link as LinkIcon,
+  Unlink,
+  Loader2,
 } from 'lucide-react';
 import dnaiLogo from '@/assets/dnai-logo.png';
 import { QuestionPanel } from '@/components/canvas/QuestionPanel';
@@ -22,19 +27,24 @@ import {
   FUNNEL_LEVELS,
   getCanvasCenterX,
 } from '@/utils/funnelLayout';
+import { toast } from 'sonner';
 
 export default function Canvas() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { currentSession, loadSession, addNode, updateNode } = useSession();
+  const { currentSession, loadSession, addNode, updateNode, isSessionReady } = useSession();
   const { user } = useAuth();
   const [canvasWidth, setCanvasWidth] = useState(1000);
 
+  // Connect mode state
+  const [isConnectMode, setIsConnectMode] = useState(false);
+  const [pendingFromNodeId, setPendingFromNodeId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (sessionId && !currentSession) {
+    if (sessionId) {
       loadSession(sessionId);
     }
-  }, [sessionId, currentSession, loadSession]);
+  }, [sessionId, loadSession]);
 
   // Redirect if no session found
   if (!sessionId) {
@@ -52,9 +62,62 @@ export default function Canvas() {
   // Selected node for highlighting connections
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // Handle node click - different behavior in connect mode
+  const handleNodeClick = useCallback((node: SessionNode) => {
+    if (isConnectMode) {
+      if (!pendingFromNodeId) {
+        // First click - select "from" node
+        setPendingFromNodeId(node.id);
+        toast.info(`Selected "${node.label}" as source. Click another node to connect.`);
+      } else {
+        // Second click - create connection
+        if (pendingFromNodeId === node.id) {
+          // Clicked same node - cancel
+          setPendingFromNodeId(null);
+          toast.info('Connection cancelled');
+          return;
+        }
+        
+        // Check if connection already exists
+        const fromNode = currentSession?.nodes.find(n => n.id === pendingFromNodeId);
+        if (fromNode?.connections.includes(node.id)) {
+          toast.warning('Connection already exists');
+          setPendingFromNodeId(null);
+          return;
+        }
+        
+        // Create the connection
+        if (fromNode && updateNode) {
+          updateNode(pendingFromNodeId, {
+            connections: [...fromNode.connections, node.id],
+          });
+          toast.success(`Connected "${fromNode.label}" → "${node.label}"`);
+        }
+        setPendingFromNodeId(null);
+      }
+    } else {
+      // Normal mode - toggle selection for highlighting
+      setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
+    }
+  }, [isConnectMode, pendingFromNodeId, currentSession?.nodes, updateNode, selectedNodeId]);
+
+  // Clear connections for selected node
+  const handleClearConnections = useCallback(() => {
+    if (!selectedNodeId || !currentSession) return;
+    
+    const node = currentSession.nodes.find(n => n.id === selectedNodeId);
+    if (node && updateNode) {
+      updateNode(selectedNodeId, { connections: [] });
+      toast.success(`Cleared all connections from "${node.label}"`);
+    }
+  }, [selectedNodeId, currentSession, updateNode]);
+
   // Handle node creation from question answers
   const handleNodeCreate = useCallback((nodeType: string, data: Record<string, any>) => {
-    if (!currentSession) return;
+    if (!currentSession) {
+      console.warn('Cannot create node: session not loaded');
+      return;
+    }
     
     // Handle node updates (for volume/spend data)
     if (nodeType === 'lead-source-update') {
@@ -91,9 +154,13 @@ export default function Canvas() {
     if (nodeType === 'intake-connection') {
       const intakeNode = currentSession.nodes.find(n => n.sourceId === data.intakeId);
       if (intakeNode && updateNode) {
-        updateNode(intakeNode.id, {
-          sourceConnections: [...(intakeNode.sourceConnections || []), data.leadSourceId],
-        });
+        const existingConnections = intakeNode.sourceConnections || [];
+        // Prevent duplicates
+        if (!existingConnections.includes(data.leadSourceId)) {
+          updateNode(intakeNode.id, {
+            sourceConnections: [...existingConnections, data.leadSourceId],
+          });
+        }
       }
       return;
     }
@@ -113,6 +180,11 @@ export default function Canvas() {
       leakReason: data.leakReason,
     });
   }, [currentSession, addNode, updateNode]);
+
+  // Get the "from" node for connect mode indicator
+  const pendingFromNode = pendingFromNodeId 
+    ? currentSession?.nodes.find(n => n.id === pendingFromNodeId) 
+    : null;
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -162,10 +234,19 @@ export default function Canvas() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Questions Panel */}
         <aside className="w-80 border-r border-border bg-card flex flex-col shrink-0 hidden lg:flex">
-          <QuestionPanel 
-            sessionId={sessionId} 
-            onNodeCreate={handleNodeCreate}
-          />
+          {!isSessionReady ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">Loading session...</p>
+              </div>
+            </div>
+          ) : (
+            <QuestionPanel 
+              sessionId={sessionId} 
+              onNodeCreate={handleNodeCreate}
+            />
+          )}
         </aside>
 
         {/* Center Canvas */}
@@ -205,6 +286,16 @@ export default function Canvas() {
             ))}
           </div>
 
+          {/* Connect Mode Indicator */}
+          {isConnectMode && pendingFromNode && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-accent text-accent-foreground shadow-lg">
+              <p className="text-sm font-medium">
+                Connecting from: <strong>{pendingFromNode.label}</strong>
+              </p>
+              <p className="text-xs opacity-80">Click another node or click same node to cancel</p>
+            </div>
+          )}
+
           {/* Canvas Content - Empty State */}
           {(!currentSession?.nodes || currentSession.nodes.length === 0) && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -237,8 +328,8 @@ export default function Canvas() {
                 <CanvasNode
                   key={node.id}
                   node={node}
-                  isSelected={node.id === selectedNodeId}
-                  onClick={(n) => setSelectedNodeId(n.id === selectedNodeId ? null : n.id)}
+                  isSelected={node.id === selectedNodeId || node.id === pendingFromNodeId}
+                  onClick={() => handleNodeClick(node)}
                 />
               ))}
             </div>
@@ -246,6 +337,46 @@ export default function Canvas() {
 
           {/* Canvas Action Bar */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-xl bg-card border border-border shadow-lg">
+            {/* Connect Mode Toggle */}
+            <div className="flex items-center gap-2 px-2">
+              <Switch
+                id="connect-mode"
+                checked={isConnectMode}
+                onCheckedChange={(checked) => {
+                  setIsConnectMode(checked);
+                  setPendingFromNodeId(null);
+                  if (checked) {
+                    toast.info('Connect Mode ON - Click nodes to link them');
+                  }
+                }}
+              />
+              <Label 
+                htmlFor="connect-mode" 
+                className={`text-sm cursor-pointer flex items-center gap-1 ${isConnectMode ? 'text-accent font-medium' : 'text-muted-foreground'}`}
+              >
+                <LinkIcon className="h-3.5 w-3.5" />
+                Connect
+              </Label>
+            </div>
+            
+            <div className="w-px h-6 bg-border" />
+            
+            {/* Clear Connections - Only show when node is selected */}
+            {selectedNodeId && !isConnectMode && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="gap-2 text-destructive hover:text-destructive"
+                  onClick={handleClearConnections}
+                >
+                  <Unlink className="h-4 w-4" />
+                  Clear Links
+                </Button>
+                <div className="w-px h-6 bg-border" />
+              </>
+            )}
+            
             <Button variant="ghost" size="sm" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Funnel View

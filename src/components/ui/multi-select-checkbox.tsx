@@ -3,7 +3,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { SelectOption } from "@/types/questions";
 import { cn } from "@/lib/utils";
 import { Plus, X } from "lucide-react";
@@ -108,9 +107,9 @@ export function MultiSelectCheckbox({
         </div>
       </div>
 
-      {/* Options List */}
-      <ScrollArea 
-        className="border border-border rounded-lg bg-background/50"
+      {/* Options List - Using native scrolling for reliability */}
+      <div 
+        className="border border-border rounded-lg bg-background/50 overflow-y-auto"
         style={{ maxHeight }}
       >
         <div className="p-3 space-y-4">
@@ -196,7 +195,7 @@ export function MultiSelectCheckbox({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Custom Input */}
       {allowCustom && (

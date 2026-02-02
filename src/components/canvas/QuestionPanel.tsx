@@ -78,6 +78,19 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
         }
       }
 
+      // Handle intake-to-source mapping questions (q_intake_map_*)
+      const intakeMappingMatch = currentQuestion.id.match(/^q_intake_map_(.+)$/);
+      if (intakeMappingMatch && onNodeCreate) {
+        const leadSourceId = intakeMappingMatch[1];
+        // For each selected intake method, create a connection to this lead source
+        multiSelectValue.forEach((intakeId) => {
+          onNodeCreate('intake-connection', {
+            intakeId: intakeId,
+            leadSourceId: leadSourceId,
+          });
+        });
+      }
+
       // Create nodes for each selection if applicable
       if (currentQuestion.nodeCreation?.createPerSelection && onNodeCreate) {
         multiSelectValue.forEach((value) => {
