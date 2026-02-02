@@ -15,6 +15,7 @@ import {
   Workflow,
   Settings,
   Users,
+  Search,
 } from 'lucide-react';
 import dnaiLogo from '@/assets/dnai-logo.png';
 
@@ -55,9 +56,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>(['settings']);
 
-  const getInitials = (email: string | undefined) => {
-    if (!email) return 'U';
-    return email.charAt(0).toUpperCase();
+  const getInitials = (name?: string | null, email?: string) => {
+    if (name) {
+      return name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    if (email) return email.charAt(0).toUpperCase();
+    return 'U';
   };
 
   const toggleMenu = (id: string) => {
@@ -73,54 +82,63 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return item.children?.some((child) => isActive(child.href));
   };
 
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
+    <div className="flex min-h-screen w-full bg-background">
+      {/* Sidebar - Dark Navy Per PRD */}
       <aside
         className={cn(
-          'flex flex-col border-r border-border bg-card transition-all duration-300',
-          collapsed ? 'w-16' : 'w-64'
+          'flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300',
+          collapsed ? 'w-[72px]' : 'w-[260px]'
         )}
       >
-        {/* Logo & Collapse */}
-        <div className="flex h-16 items-center justify-between border-b border-border px-4">
+        {/* Logo & Collapse Toggle */}
+        <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
           {!collapsed && (
             <div className="flex items-center gap-3">
-              <img src={dnaiLogo} alt="DNAi" className="h-8 w-auto" />
+              <img src={dnaiLogo} alt="DNAi Solutions" className="h-8 w-auto" />
             </div>
           )}
+          {collapsed && (
+            <img src={dnaiLogo} alt="DNAi" className="h-7 w-auto mx-auto" />
+          )}
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+            variant="subtle"
+            size="icon-sm"
+            className={cn(
+              'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-muted',
+              collapsed && 'hidden'
+            )}
             onClick={() => setCollapsed(!collapsed)}
           >
-            <ChevronLeft
-              className={cn('h-4 w-4 transition-transform', collapsed && 'rotate-180')}
-            />
+            <ChevronLeft className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* User Info */}
-        <div className={cn('border-b border-border p-4', collapsed && 'flex justify-center')}>
+        {/* User Profile Section */}
+        <div className={cn('p-4 border-b border-sidebar-border', collapsed && 'px-2 py-4')}>
           <div className={cn('flex items-center gap-3', collapsed && 'flex-col')}>
-            <Avatar className="h-10 w-10 border-2 border-primary/30">
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {getInitials(user?.email)}
+            <Avatar className={cn(
+              'ring-2 ring-accent/30 transition-all',
+              collapsed ? 'h-10 w-10' : 'h-11 w-11'
+            )}>
+              <AvatarFallback className="bg-accent/20 text-accent font-semibold text-sm">
+                {getInitials(user?.user_metadata?.full_name, user?.email)}
               </AvatarFallback>
             </Avatar>
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                <p className="truncate text-sm font-medium text-sidebar-foreground">
+                  {displayName}
                 </p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 mt-0.5">
                   {isAdmin ? (
                     <Shield className="h-3 w-3 text-accent" />
                   ) : (
-                    <User className="h-3 w-3 text-primary" />
+                    <User className="h-3 w-3 text-accent" />
                   )}
-                  <span className="text-xs text-muted-foreground capitalize">
+                  <span className="text-xs text-sidebar-foreground/60 capitalize">
                     {role || 'User'}
                   </span>
                 </div>
@@ -129,10 +147,28 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </div>
 
+        {/* Search (collapsed shows icon only) */}
+        {!collapsed && (
+          <div className="p-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sidebar-muted text-sidebar-foreground/50 text-sm">
+              <Search className="h-4 w-4" />
+              <span>Search...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation Label */}
+        {!collapsed && (
+          <div className="px-4 pt-2 pb-1">
+            <span className="text-[11px] font-medium text-sidebar-foreground/40 uppercase tracking-wider">
+              Menu
+            </span>
+          </div>
+        )}
+
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-2">
+        <nav className={cn('flex-1 px-2 space-y-1', collapsed && 'px-2')}>
           {navItems.map((item) => {
-            // Skip admin-only items for non-admins
             if (item.adminOnly && !isAdmin) return null;
 
             const Icon = item.icon;
@@ -140,7 +176,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             const isOpen = openMenus.includes(item.id);
             const parentActive = isParentActive(item);
 
-            // Filter children for admin-only items
             const visibleChildren = item.children?.filter(
               (child) => !child.adminOnly || isAdmin
             );
@@ -155,21 +190,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <CollapsibleTrigger asChild>
                     <button
                       className={cn(
-                        'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                        'hover:bg-secondary/80',
+                        'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                         parentActive
-                          ? 'bg-secondary text-foreground'
-                          : 'text-muted-foreground',
-                        collapsed && 'justify-center'
+                          ? 'bg-accent/15 text-accent'
+                          : 'text-sidebar-foreground/70 hover:bg-sidebar-muted hover:text-sidebar-foreground',
+                        collapsed && 'justify-center px-2'
                       )}
                     >
-                      <Icon className="h-5 w-5 shrink-0" />
+                      <Icon className={cn(
+                        'h-5 w-5 shrink-0 transition-colors',
+                        parentActive ? 'text-accent' : 'group-hover:text-accent'
+                      )} />
                       {!collapsed && (
                         <>
                           <span className="flex-1 text-left">{item.label}</span>
                           <ChevronDown
                             className={cn(
-                              'h-4 w-4 transition-transform',
+                              'h-4 w-4 transition-transform duration-200',
                               isOpen && 'rotate-180'
                             )}
                           />
@@ -177,20 +214,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     </button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="pl-4">
+                  <CollapsibleContent className="mt-1 space-y-1">
                     {visibleChildren.map((child) => (
                       <button
                         key={child.id}
                         onClick={() => navigate(child.href)}
                         className={cn(
-                          'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                          'hover:bg-secondary/80',
+                          'flex w-full items-center gap-3 rounded-lg py-2 pl-11 pr-3 text-sm transition-all duration-200',
                           isActive(child.href)
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-muted-foreground'
+                            ? 'bg-accent text-accent-foreground font-medium'
+                            : 'text-sidebar-foreground/60 hover:bg-sidebar-muted hover:text-sidebar-foreground'
                         )}
                       >
-                        <ChevronRight className="h-4 w-4" />
                         <span>{child.label}</span>
                       </button>
                     ))}
@@ -204,15 +239,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 key={item.id}
                 onClick={() => item.href && navigate(item.href)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  'hover:bg-secondary/80',
+                  'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                   isActive(item.href || '')
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground',
-                  collapsed && 'justify-center'
+                    ? 'bg-accent text-accent-foreground shadow-level-1'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-muted hover:text-sidebar-foreground',
+                  collapsed && 'justify-center px-2'
                 )}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon className={cn(
+                  'h-5 w-5 shrink-0 transition-colors',
+                  isActive(item.href || '') ? '' : 'group-hover:text-accent'
+                )} />
                 {!collapsed && <span>{item.label}</span>}
               </button>
             );
@@ -220,12 +257,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </nav>
 
         {/* Sign Out */}
-        <div className="border-t border-border p-2">
+        <div className="border-t border-sidebar-border p-3">
           <Button
-            variant="ghost"
+            variant="subtle"
             className={cn(
-              'w-full gap-3 text-muted-foreground hover:text-foreground',
-              collapsed && 'justify-center px-0'
+              'w-full gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-muted justify-start',
+              collapsed && 'justify-center px-2'
             )}
             onClick={signOut}
           >
@@ -233,10 +270,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {!collapsed && <span>Sign Out</span>}
           </Button>
         </div>
+
+        {/* Collapse Toggle at Bottom */}
+        {collapsed && (
+          <div className="border-t border-sidebar-border p-3">
+            <Button
+              variant="subtle"
+              size="icon-sm"
+              className="w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-muted"
+              onClick={() => setCollapsed(false)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 }

@@ -138,7 +138,7 @@ export default function UsersSettings() {
     <DashboardLayout>
       <div className="flex h-full flex-col">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b border-border bg-card/50 px-6">
+        <header className="flex h-16 items-center justify-between border-b border-border bg-card/50 backdrop-blur-sm px-6">
           <div>
             <h1 className="text-xl font-semibold text-foreground">User Management</h1>
             <p className="text-sm text-muted-foreground">
@@ -150,17 +150,18 @@ export default function UsersSettings() {
             size="sm"
             onClick={fetchUsers}
             disabled={loading}
+            className="gap-2"
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-6 scrollbar-thin">
           {/* Stats */}
           <div className="mb-6 grid gap-4 sm:grid-cols-3">
-            <Card>
+            <Card className="card-hover">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Total Users
@@ -168,11 +169,11 @@ export default function UsersSettings() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{users.length}</div>
+                <div className="text-2xl font-bold metric-value">{users.length}</div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="card-hover">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Administrators
@@ -180,11 +181,11 @@ export default function UsersSettings() {
                 <Shield className="h-4 w-4 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-accent">{adminCount}</div>
+                <div className="text-2xl font-bold metric-value text-accent">{adminCount}</div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="card-hover">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Sales Reps
@@ -192,7 +193,7 @@ export default function UsersSettings() {
                 <User className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-primary">{repCount}</div>
+                <div className="text-2xl font-bold metric-value text-primary">{repCount}</div>
               </CardContent>
             </Card>
           </div>
@@ -208,7 +209,7 @@ export default function UsersSettings() {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <Loader2 className="h-8 w-8 animate-spin text-accent" />
                 </div>
               ) : users.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
@@ -226,21 +227,21 @@ export default function UsersSettings() {
                   </TableHeader>
                   <TableBody>
                     {users.map((userData) => (
-                      <TableRow key={userData.user_id}>
+                      <TableRow key={userData.user_id} className="group">
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-primary/10 text-primary">
+                            <Avatar className="h-9 w-9 ring-2 ring-accent/20">
+                              <AvatarFallback className="bg-accent/10 text-accent font-medium text-sm">
                                 {getInitials(userData.full_name)}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">
+                              <p className="font-medium text-foreground">
                                 {userData.full_name || 'Unknown User'}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {userData.user_id === user?.id && '(You)'}
-                              </p>
+                              {userData.user_id === user?.id && (
+                                <p className="text-xs text-muted-foreground">(You)</p>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -253,7 +254,7 @@ export default function UsersSettings() {
                             className={
                               userData.role === 'admin'
                                 ? 'bg-accent text-accent-foreground'
-                                : ''
+                                : 'bg-primary/20 text-primary'
                             }
                           >
                             {userData.role === 'admin' ? (
@@ -275,7 +276,7 @@ export default function UsersSettings() {
                               }
                               disabled={updatingUserId === userData.user_id}
                             >
-                              <SelectTrigger className="w-32">
+                              <SelectTrigger className="w-28 h-8">
                                 {updatingUserId === userData.user_id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
@@ -285,13 +286,13 @@ export default function UsersSettings() {
                               <SelectContent>
                                 <SelectItem value="rep">
                                   <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
+                                    <User className="h-3 w-3" />
                                     Rep
                                   </div>
                                 </SelectItem>
                                 <SelectItem value="admin">
                                   <div className="flex items-center gap-2">
-                                    <Shield className="h-4 w-4" />
+                                    <Shield className="h-3 w-3" />
                                     Admin
                                   </div>
                                 </SelectItem>
@@ -306,7 +307,7 @@ export default function UsersSettings() {
               )}
             </CardContent>
           </Card>
-        </div>
+        </main>
       </div>
     </DashboardLayout>
   );
