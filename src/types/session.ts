@@ -2,15 +2,27 @@
 // ALIGN Session Types - Per PRD Data Model
 // ============================================
 
-export type Industry = 
-  | 'roofing'
-  | 'pest-control'
-  | 'hvac'
-  | 'plumbing'
-  | 'landscaping'
-  | 'cleaning'
-  | 'other-service'
+// Industry categories for broader service business support
+export type IndustryCategory = 
+  | 'home-services'
+  | 'healthcare-wellness'
+  | 'childcare-education'
+  | 'professional-services'
+  | 'transportation-logistics'
+  | 'automotive'
+  | 'personal-services'
   | 'custom';
+
+// Backward compatible - includes old values + new categories
+export type Industry = IndustryCategory | 'roofing' | 'pest-control' | 'hvac' | 'plumbing' | 'landscaping' | 'cleaning' | 'other-service';
+
+export interface IndustryCategoryOption {
+  value: IndustryCategory;
+  label: string;
+  icon: string;
+  description: string;
+  examples: string[];
+}
 
 export type NodeType = 
   | 'lead-source'
@@ -75,13 +87,67 @@ export interface AlignSession {
   status: 'draft' | 'in-progress' | 'completed' | 'exported';
 }
 
-export const INDUSTRY_OPTIONS: { value: Industry; label: string }[] = [
-  { value: 'roofing', label: 'Roofing' },
-  { value: 'pest-control', label: 'Pest Control' },
-  { value: 'hvac', label: 'HVAC' },
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'landscaping', label: 'Landscaping' },
-  { value: 'cleaning', label: 'Cleaning Services' },
-  { value: 'other-service', label: 'Other Service Business' },
-  { value: 'custom', label: 'Custom (I\'ll tell you)' },
+export const INDUSTRY_CATEGORIES: IndustryCategoryOption[] = [
+  {
+    value: 'home-services',
+    label: 'Home Services',
+    icon: '🏠',
+    description: 'Blue-collar trades & home repair',
+    examples: ['Roofing', 'HVAC', 'Plumbing', 'Electrical', 'Pest Control', 'Landscaping', 'Cleaning', 'Painting'],
+  },
+  {
+    value: 'healthcare-wellness',
+    label: 'Healthcare & Wellness',
+    icon: '🩺',
+    description: 'Medical, mental health, wellness',
+    examples: ['Mental Health Practice', 'Therapy/Counseling', 'Chiropractic', 'Dental', 'Med Spa', 'Physical Therapy'],
+  },
+  {
+    value: 'childcare-education',
+    label: 'Childcare & Education',
+    icon: '👶',
+    description: 'Youth services & learning',
+    examples: ['Daycare/Childcare', 'Tutoring', 'Private School', 'After-School Programs'],
+  },
+  {
+    value: 'professional-services',
+    label: 'Professional Services',
+    icon: '💼',
+    description: 'B2B consulting & expertise',
+    examples: ['Business Consulting', 'Marketing Agency', 'Legal Services', 'Accounting', 'IT Services'],
+  },
+  {
+    value: 'transportation-logistics',
+    label: 'Transportation & Logistics',
+    icon: '🚚',
+    description: 'Moving, shipping, freight',
+    examples: ['Freight/Trucking', 'Moving Company', 'Courier/Delivery', 'Auto Transport'],
+  },
+  {
+    value: 'automotive',
+    label: 'Automotive',
+    icon: '🚗',
+    description: 'Vehicle-related services',
+    examples: ['Auto Repair', 'Detailing', 'Tire Shop', 'Body Shop', 'Towing'],
+  },
+  {
+    value: 'personal-services',
+    label: 'Personal Services',
+    icon: '✂️',
+    description: 'Consumer-facing lifestyle',
+    examples: ['Salon/Barbershop', 'Photography', 'Event Planning', 'Pet Services', 'Fitness/Training'],
+  },
+  {
+    value: 'custom',
+    label: 'Custom',
+    icon: '⚙️',
+    description: "I'll describe my industry",
+    examples: ['AI will research and adapt to your specific business'],
+  },
 ];
+
+// Legacy support - flat list for backward compatibility
+export const INDUSTRY_OPTIONS: { value: Industry; label: string }[] = INDUSTRY_CATEGORIES.map(cat => ({
+  value: cat.value,
+  label: cat.label,
+}));
