@@ -322,15 +322,17 @@ export default function Canvas() {
       return;
     }
 
-    // Handle intake-to-source connection mapping
-    if (nodeType === 'intake-connection') {
+    // Handle source-to-intake connection mapping (lead source → intake)
+    if (nodeType === 'source-to-intake-connection') {
+      const leadSourceNode = currentSession.nodes.find(n => n.sourceId === data.leadSourceId);
       const intakeNode = currentSession.nodes.find(n => n.sourceId === data.intakeId);
-      if (intakeNode && updateNode) {
-        const existingConnections = intakeNode.sourceConnections || [];
+      
+      if (leadSourceNode && intakeNode && updateNode) {
+        const existingConnections = leadSourceNode.connections || [];
         // Prevent duplicates
-        if (!existingConnections.includes(data.leadSourceId)) {
-          updateNode(intakeNode.id, {
-            sourceConnections: [...existingConnections, data.leadSourceId],
+        if (!existingConnections.includes(intakeNode.id)) {
+          updateNode(leadSourceNode.id, {
+            connections: [...existingConnections, intakeNode.id],
           });
         }
       }

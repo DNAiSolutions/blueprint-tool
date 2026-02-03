@@ -88,20 +88,17 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
       const intakeMappingMatch = currentQuestion.id.match(/^q_intake_map_(.+)$/);
       if (intakeMappingMatch && onNodeCreate) {
         const leadSourceId = intakeMappingMatch[1];
-        // For each selected intake method, create a connection to this lead source
+        // For each selected intake method, create a connection FROM this lead source TO the intake
         multiSelectValue.forEach((intakeId) => {
-          onNodeCreate('intake-connection', {
-            intakeId: intakeId,
+          onNodeCreate('source-to-intake-connection', {
             leadSourceId: leadSourceId,
+            intakeId: intakeId,
           });
         });
       }
 
       // Create nodes for each selection if applicable
       if (currentQuestion.nodeCreation?.createPerSelection && onNodeCreate) {
-        // Get existing lead source nodes for auto-connecting intake methods
-        const isIntakeQuestion = currentQuestion.id === 'q_intake_methods';
-        
         multiSelectValue.forEach((value) => {
           const option = currentQuestion.options?.find(o => o.value === value);
           const label = option?.label || value.replace(/-/g, ' ');
@@ -110,8 +107,8 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
             sourceId: value,
             label: label,
             questionId: currentQuestion.id,
-            // For intake nodes, auto-connect to all lead sources
-            autoConnectToLeadSources: isIntakeQuestion,
+            // Connections are made via mapping questions, not auto-connect
+            autoConnectToLeadSources: false,
           });
         });
       }
