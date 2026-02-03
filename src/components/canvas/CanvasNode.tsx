@@ -22,19 +22,25 @@ const LEAK_COLOR = { border: 'hsl(0, 70%, 55%)', bg: 'hsl(0, 70%, 55%)' };      
 interface CanvasNodeProps {
   node: SessionNode;
   isSelected?: boolean;
+  isConnectionDragging?: boolean;
   onClick?: (node: SessionNode) => void;
   onDoubleClick?: (node: SessionNode) => void;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
   onContextMenu?: (e: React.MouseEvent, node: SessionNode) => void;
+  onStartConnectionDrag?: (nodeId: string, startPoint: { x: number; y: number }) => void;
+  onCompleteConnectionDrop?: (nodeId: string) => void;
 }
 
 export function CanvasNode({ 
   node, 
   isSelected, 
+  isConnectionDragging,
   onClick, 
   onDoubleClick,
   onDragEnd,
   onContextMenu,
+  onStartConnectionDrag,
+  onCompleteConnectionDrop,
 }: CanvasNodeProps) {
   const colors = node.isLeak ? LEAK_COLOR : (NODE_COLORS[node.type] || NODE_COLORS.custom);
   const [isDragging, setIsDragging] = useState(false);
@@ -107,7 +113,7 @@ export function CanvasNode({
   }, [isDragging, dragOffset]);
 
   // Handle mouse up - end dragging
-  const handleMouseUp = useCallback(() => {
+  const handleDragEnd = useCallback(() => {
     if (isDragging) {
       setIsDragging(false);
       if (onDragEnd) {
@@ -120,10 +126,10 @@ export function CanvasNode({
   useState(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mouseup', handleDragEnd);
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('mouseup', handleDragEnd);
       };
     }
   });
@@ -158,12 +164,34 @@ export function CanvasNode({
 
   const displayPosition = isDragging ? dragPosition : node.position;
 
+  // Handle connector handle drag start
+  const handleConnectorMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onStartConnectionDrag) {
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      onStartConnectionDrag(node.id, {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+    }
+  }, [node.id, onStartConnectionDrag]);
+
+  // Handle drop target when connection is being dragged
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (isConnectionDragging && onCompleteConnectionDrop) {
+      e.stopPropagation();
+      onCompleteConnectionDrop(node.id);
+    }
+  }, [isConnectionDragging, onCompleteConnectionDrop, node.id]);
+
   return (
     <div
       className={cn(
-        "canvas-node absolute p-3 bg-card rounded-lg shadow-md min-w-[150px] max-w-[200px] transition-all select-none",
+        "canvas-node absolute p-3 bg-card rounded-lg shadow-md min-w-[150px] max-w-[200px] transition-all select-none group",
         isDragging ? "cursor-grabbing opacity-80 shadow-xl z-50" : "cursor-grab hover:shadow-lg hover:scale-105",
         isSelected && "ring-2 ring-accent ring-offset-2",
+        isConnectionDragging && "ring-2 ring-accent/50 ring-dashed",
         node.isLeak && "animate-pulse"
       )}
       style={{
@@ -175,8 +203,18 @@ export function CanvasNode({
       }}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       onContextMenu={handleContextMenu}
     >
+      {/* Connector Handle - Right side */}
+      {onStartConnectionDrag && (
+        <div
+          className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-accent border-2 border-background shadow-md cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-125"
+          onMouseDown={handleConnectorMouseDown}
+          title="Drag to connect to another node"
+        />
+      )}
+      
       {/* Node Type Badge */}
       <div 
         className="absolute -top-2.5 left-3 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full text-white flex items-center gap-1"

@@ -177,14 +177,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateNode = useCallback((nodeId: string, updates: Partial<SessionNode>) => {
-    if (!currentSession) return;
-
-    const updatedNodes = currentSession.nodes.map(node =>
-      node.id === nodeId ? { ...node, ...updates } : node
-    );
-    
-    updateSession({ nodes: updatedNodes });
-  }, [currentSession, updateSession]);
+    setCurrentSession(prev => {
+      if (!prev) return prev;
+      
+      const updatedNodes = prev.nodes.map(node =>
+        node.id === nodeId ? { ...node, ...updates } : node
+      );
+      
+      const updated = {
+        ...prev,
+        nodes: updatedNodes,
+        updatedAt: new Date(),
+      };
+      
+      setSessions(sessions => sessions.map(s => s.id === updated.id ? updated : s));
+      return updated;
+    });
+  }, []);
 
   const deleteNode = useCallback((nodeId: string) => {
     if (!currentSession) return;

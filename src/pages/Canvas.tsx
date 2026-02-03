@@ -63,6 +63,10 @@ export default function Canvas() {
   const [isConnectMode, setIsConnectMode] = useState(false);
   const [pendingFromNodeId, setPendingFromNodeId] = useState<string | null>(null);
 
+  // Drag-to-connect state
+  const [dragConnectFromId, setDragConnectFromId] = useState<string | null>(null);
+  const [dragCursorPos, setDragCursorPos] = useState<{ x: number; y: number } | null>(null);
+
   // Modal states
   const [editingNode, setEditingNode] = useState<SessionNode | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -273,6 +277,66 @@ export default function Canvas() {
       toast.success('Connection removed');
     }
   }, [currentSession?.nodes, updateNode]);
+
+  // Drag-to-connect handlers
+  const handleStartConnectionDrag = useCallback((nodeId: string, startPoint: { x: number; y: number }) => {
+    setDragConnectFromId(nodeId);
+    setDragCursorPos(startPoint);
+  }, []);
+
+  const handleCompleteConnectionDrop = useCallback((toNodeId: string) => {
+    if (!dragConnectFromId || dragConnectFromId === toNodeId) {
+      setDragConnectFromId(null);
+      setDragCursorPos(null);
+      return;
+    }
+    
+    const fromNode = currentSession?.nodes.find(n => n.id === dragConnectFromId);
+    if (fromNode && !fromNode.connections.includes(toNodeId)) {
+      updateNode(dragConnectFromId, {
+        connections: [...fromNode.connections, toNodeId],
+      });
+      const toNode = currentSession?.nodes.find(n => n.id === toNodeId);
+      toast.success(`Connected "${fromNode.label}" → "${toNode?.label || 'node'}"`);
+    }
+    
+    setDragConnectFromId(null);
+    setDragCursorPos(null);
+  }, [dragConnectFromId, currentSession?.nodes, updateNode]);
+
+  // Track mouse position during drag-to-connect
+  useEffect(() => {
+    if (!dragConnectFromId) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scrollLeft = canvas.scrollLeft;
+      const scrollTop = canvas.scrollTop;
+      
+      // Convert to canvas coordinates, accounting for zoom
+      setDragCursorPos({
+        x: (e.clientX - rect.left + scrollLeft) / zoomLevel,
+        y: (e.clientY - rect.top + scrollTop) / zoomLevel,
+      });
+    };
+    
+    const handleMouseUp = () => {
+      // If we mouseup without hitting a target node, cancel
+      setDragConnectFromId(null);
+      setDragCursorPos(null);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragConnectFromId, zoomLevel]);
 
   // Handle manual save
   const handleManualSave = useCallback(() => {
@@ -560,6 +624,35 @@ export default function Canvas() {
               />
             )}
 
+            {/* Drag-to-connect preview line */}
+            {dragConnectFromId && dragCursorPos && (
+              <svg
+                className="absolute inset-0 pointer-events-none z-40"
+                style={{ minWidth: '100%', minHeight: '100%' }}
+              >
+                {(() => {
+                  const fromNode = positionedNodes.find(n => n.id === dragConnectFromId);
+                  if (!fromNode) return null;
+                  
+                  const startX = fromNode.position.x + 175; // Right edge of node
+                  const startY = fromNode.position.y + 40;  // Center height
+                  
+                  return (
+                    <line
+                      x1={startX}
+                      y1={startY}
+                      x2={dragCursorPos.x}
+                      y2={dragCursorPos.y}
+                      stroke="hsl(var(--accent))"
+                      strokeWidth="2"
+                      strokeDasharray="6 4"
+                      opacity="0.7"
+                    />
+                  );
+                })()}
+              </svg>
+            )}
+
             {/* Render Nodes with Context Menu */}
             {positionedNodes.length > 0 && (
               <div className="absolute inset-0 min-h-[900px]">
@@ -570,10 +663,13 @@ export default function Canvas() {
                         <CanvasNode
                           node={node}
                           isSelected={node.id === selectedNodeId || node.id === pendingFromNodeId}
+                          isConnectionDragging={!!dragConnectFromId && dragConnectFromId !== node.id}
                           onClick={handleNodeClick}
                           onDoubleClick={handleNodeDoubleClick}
                           onDragEnd={handleNodeDragEnd}
                           onContextMenu={handleContextMenu}
+                          onStartConnectionDrag={handleStartConnectionDrag}
+                          onCompleteConnectionDrop={handleCompleteConnectionDrop}
                         />
                       </div>
                     </ContextMenuTrigger>
