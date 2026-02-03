@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '@/hooks/useSession';
 import { useAuth } from '@/hooks/useAuth';
 import { useMetricsCalculator, formatCurrency } from '@/hooks/useMetricsCalculator';
+import { useAIReadiness } from '@/hooks/useAIReadiness';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -34,6 +35,7 @@ import { CanvasNode } from '@/components/canvas/CanvasNode';
 import { ConnectorsSVG } from '@/components/canvas/CanvasConnector';
 import { NodeEditModal } from '@/components/canvas/NodeEditModal';
 import { AddNodeModal } from '@/components/canvas/AddNodeModal';
+import { AIReadinessPanel } from '@/components/canvas/AIReadinessPanel';
 import { SessionNode, NodeType } from '@/types/session';
 import { 
   calculateFunnelPositions, 
@@ -87,6 +89,9 @@ export default function Canvas() {
 
   // Calculate metrics
   const metrics = useMetricsCalculator(currentSession?.nodes || []);
+  
+  // Calculate AI Readiness
+  const aiReadiness = useAIReadiness(currentSession?.nodes || []);
 
   // Auto-save effect
   useEffect(() => {
@@ -644,81 +649,21 @@ export default function Canvas() {
           </div>
         </main>
 
-        {/* Right Sidebar - Metrics Panel */}
-        <aside className="w-80 border-l border-border bg-card flex flex-col shrink-0 hidden xl:flex">
-          <div className="p-4 border-b border-border border-t-2 border-t-accent">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
-              <span className="text-lg">📊</span>
-              Metrics
-            </h2>
+        {/* Right Sidebar - AI Readiness & Metrics Panel */}
+        <aside className="w-80 border-l border-border bg-card flex flex-col shrink-0 hidden xl:flex overflow-hidden">
+          {/* Tab Toggle */}
+          <div className="flex border-b border-border">
+            <button
+              className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                true ? 'bg-accent/10 text-accent border-b-2 border-accent' : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+            >
+              🤖 AI Readiness
+            </button>
           </div>
-
-          {/* Metrics Content */}
-          <div className="flex-1 overflow-auto p-4 scrollbar-thin">
-            <div className="space-y-6">
-              {/* Funnel Breakdown */}
-              <div>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Funnel Breakdown
-                </h3>
-                {positionedNodes.length > 0 ? (
-                  <div className="space-y-2">
-                    {positionedNodes.map(node => (
-                      <div key={node.id} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground truncate flex-1">{node.label}</span>
-                        {node.volume > 0 && (
-                          <span className="font-medium">{node.volume}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                    <p className="text-sm">No data yet</p>
-                    <p className="text-xs">Answer questions to see metrics</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Top Leak Alert */}
-              {metrics.biggestLeak ? (
-                <div className="p-4 rounded-lg border-2 border-destructive/50 bg-destructive/10 animate-pulse">
-                  <h3 className="text-xs font-semibold text-destructive uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    Top Leak
-                  </h3>
-                  <p className="text-sm font-medium text-foreground">{metrics.biggestLeak.stageName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{metrics.biggestLeak.reason}</p>
-                  <p className="text-sm font-bold text-destructive mt-2">
-                    {formatCurrency(metrics.biggestLeak.impact)}/mo at risk
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 rounded-lg border-2 border-dashed border-destructive/30 bg-destructive/5">
-                  <h3 className="text-xs font-semibold text-destructive uppercase tracking-wider mb-2">
-                    Top Leak
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Leaks will appear here once you add conversion data
-                  </p>
-                </div>
-              )}
-
-              {/* Revenue at Risk */}
-              <div className="p-4 rounded-lg bg-muted/50">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Revenue at Risk
-                </h3>
-                <p className={`text-2xl font-bold ${metrics.totalRevenueAtRisk > 0 ? 'text-destructive' : 'text-foreground'}`}>
-                  {formatCurrency(metrics.totalRevenueAtRisk)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total monthly leakage
-                </p>
-              </div>
-            </div>
-          </div>
+          
+          {/* AI Readiness Panel */}
+          <AIReadinessPanel readiness={aiReadiness} />
         </aside>
       </div>
 
