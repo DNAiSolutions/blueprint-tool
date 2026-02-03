@@ -1,197 +1,128 @@
 
-# Fix: Industry-Specific Questions Not Aligned
+# Fix: Display Volume Numbers on Nodes
 
-## Problem Summary
+## Problem Identified
 
-You selected **Health & Wellness** as the industry, but the qualification criteria question shows options like "Homeowner Verified" and "Property Type Qualified" which only apply to home services businesses.
+Volume numbers ARE being displayed on nodes (the component already has this feature), but there are two issues:
 
-The question system is hardcoded for blue-collar/home services and doesn't adapt to the selected industry.
+1. **Volume not being set correctly**: The `lead-source-update` flow in `QuestionPanel.tsx` uses the wrong options list (`LEAD_SOURCE_OPTIONS` instead of industry-specific options) to look up labels
+2. **Label is being overwritten unnecessarily**: The update includes `label: "${source} - ${volume}/mo"` which overwrites the clean label with volume embedded in text. This is redundant since `CanvasNode` already displays volume in a separate badge.
 
----
+## Current State
 
-## Root Cause
-
-1. **Industry stored but not used**: The session correctly stores `industry: 'healthcare-wellness'` but this value is never passed to the question flow
-2. **Static option arrays**: All SelectOption arrays in `src/types/questions.ts` are hardcoded for home services
-3. **No filtering logic**: No mechanism exists to swap or filter options based on industry
-
----
-
-## Solution Architecture
-
-### 1. Create Industry-Specific Option Sets
-
-Define qualification criteria, lead sources, and intake methods that make sense for each industry category:
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  Industry Selection                                                  │
-│     ↓                                                               │
-│  Session.industry = 'healthcare-wellness'                           │
-│     ↓                                                               │
-│  QuestionPanel receives industry                                    │
-│     ↓                                                               │
-│  getQualificationOptionsForIndustry('healthcare-wellness')          │
-│     ↓                                                               │
-│  Returns: Patient Insurance, Referral Source, Treatment Fit, etc.   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 2. Industry-Specific Qualification Criteria
-
-| Industry | Relevant Qualification Criteria |
-|----------|--------------------------------|
-| **Home Services** | Homeowner Verified, Property Type, Service Area, Budget Confirmed, Insurance Involved |
-| **Healthcare & Wellness** | Insurance/Payment Verified, Patient Fit (condition match), Referral Source, Consultation Completed, Treatment Timeline |
-| **Professional Services** | Budget Confirmed, Decision Maker Present, Project Scope Clear, Timeline Established |
-| **Childcare & Education** | Age Group Match, Schedule Fit, Location Proximity, Payment Method |
-| **Generic/Custom** | Budget Confirmed, Decision Maker Present, Timeline Established, Clear Need Identified |
-
----
-
-## Implementation Plan
-
-### Phase 1: Define Industry-Specific Options
-
-**File: `src/types/questions.ts`**
-
-Add new option sets for each industry:
-
-- `QUALIFICATION_OPTIONS_HOME_SERVICES` (current options)
-- `QUALIFICATION_OPTIONS_HEALTHCARE` (new)
-- `QUALIFICATION_OPTIONS_PROFESSIONAL` (new)
-- `QUALIFICATION_OPTIONS_CHILDCARE` (new)
-- `QUALIFICATION_OPTIONS_GENERIC` (fallback)
-
-Create a helper function:
+**CanvasNode.tsx already displays volume** (lines 191-196):
 ```typescript
-export function getQualificationOptionsForIndustry(industry?: string): SelectOption[]
+{node.volume > 0 && (
+  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/50">
+    <span className="text-[10px] text-muted-foreground">📊</span>
+    <span className="text-xs font-medium text-foreground">{node.volume}/mo</span>
+  </div>
+)}
 ```
 
-### Phase 2: Update Lead Source Options
+So volume WILL show up - the issue is that volume isn't being set properly on the node.
 
-Some lead sources are industry-specific too:
-- **Home Services**: Angi, HomeAdvisor, Thumbtack, Yard Signs, Door Knocking
-- **Healthcare**: Psychology Today, Zocdoc, Health Insurance Networks, Physician Referrals
-- **Professional**: LinkedIn, Referrals, Speaking Events, Webinars
+## Root Cause in QuestionPanel.tsx (lines 150-158)
 
-Add:
 ```typescript
-export function getLeadSourceOptionsForIndustry(industry?: string): SelectOption[]
+if (volumeMatch) {
+  const sourceId = volumeMatch[1];
+  const sourceOption = LEAD_SOURCE_OPTIONS.find(o => o.value === sourceId);  // ❌ WRONG LIST
+  onNodeCreate('lead-source-update', {
+    sourceId: sourceId,
+    volume: parsedValue,
+    label: `${sourceOption?.label || sourceId} - ${parsedValue}/mo`,  // ❌ UNNECESSARY
+  });
+}
 ```
 
-### Phase 3: Pass Industry to Question Flow
+## Solution
 
-**File: `src/components/canvas/QuestionPanel.tsx`**
+### Change 1: Remove unnecessary label override
 
-- Add `industry` prop to `QuestionPanelProps`
-- Use industry when rendering multi-select options
+When updating volume, just update the volume - don't touch the label:
 
-**File: `src/pages/Canvas.tsx`**
+```typescript
+if (volumeMatch) {
+  const sourceId = volumeMatch[1];
+  onNodeCreate('lead-source-update', {
+    sourceId: sourceId,
+    volume: parsedValue,
+    // Don't override label - it's already set correctly
+  });
+}
+```
 
-- Pass `currentSession.industry` to `<QuestionPanel>`
+### Change 2: Same for spend updates
 
-### Phase 4: Dynamic Question Option Resolution
+```typescript
+if (spendMatch) {
+  const sourceId = spendMatch[1];
+  onNodeCreate('lead-source-update', {
+    sourceId: sourceId,
+    spend: parsedValue,
+    // Don't override label
+  });
+}
+```
 
-**File: `src/hooks/useQuestionFlow.tsx`**
+### Change 3: Canvas.tsx - Only update label if provided
 
-- Accept `industry` parameter
-- Override question options at runtime based on industry
+Update the handler to not touch label if not in data:
 
----
+```typescript
+if (nodeType === 'lead-source-update') {
+  const existingNode = currentSession.nodes.find(n => 
+    n.sourceId === data.sourceId
+  );
+  if (existingNode && updateNode) {
+    const updates: Partial<SessionNode> = {};
+    if (data.volume !== undefined) updates.volume = data.volume;
+    if (data.spend !== undefined) updates.spend = data.spend;
+    if (data.label) updates.label = data.label;  // Only if explicitly provided
+    updateNode(existingNode.id, updates);
+  }
+  return;
+}
+```
 
-## Files to Create/Modify
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/types/questions.ts` | Add industry-specific option sets + helper functions |
-| `src/components/canvas/QuestionPanel.tsx` | Accept and use `industry` prop |
-| `src/pages/Canvas.tsx` | Pass `industry` to QuestionPanel |
-| `src/hooks/useQuestionFlow.tsx` | Accept `industry` parameter for dynamic filtering |
+| `src/components/canvas/QuestionPanel.tsx` | Remove label override from volume/spend updates |
+| `src/pages/Canvas.tsx` | Update handler to only modify fields that are explicitly passed |
 
----
+## Expected Result
 
-## New Qualification Options by Industry
+After fix:
+1. Select "Facebook/Meta Ads" → Node shows label "Facebook/Meta Ads"
+2. Answer volume "65" → Node now displays:
+   - Label: "Facebook/Meta Ads" (unchanged)
+   - Volume badge: "📊 65/mo" (shown below label)
+3. Answer spend "$500" → Node now displays:
+   - Label: "Facebook/Meta Ads" (unchanged)
+   - Volume badge: "📊 65/mo"
+   - Spend badge: "💵 $500"
 
-### Healthcare & Wellness
-- Insurance/Payment Method Verified
-- Condition/Treatment Fit
-- Patient Referral Source Identified
-- Consultation/Assessment Completed
-- Treatment Timeline Established
-- In-Network or Self-Pay Confirmed
-- Medical History Reviewed
+## Visual Example
 
-### Professional Services
-- Budget/Investment Confirmed
-- Decision Maker Present
-- Project Scope Defined
-- Timeline/Urgency Established
-- Contract Authority Verified
-- Business Size/Type Qualified
-
-### Childcare & Education
-- Age Group Match
-- Schedule Availability Fit
-- Location/Transportation Verified
-- Payment Method Confirmed
-- Special Needs Assessment (if applicable)
-- Enrollment Capacity Available
-
-### Generic (Fallback)
-- Budget Confirmed
-- Decision Maker Present
-- Timeline Established
-- Clear Need Identified
-- Service Area Confirmed
-
----
-
-## New Lead Source Options by Industry
-
-### Healthcare & Wellness
-- Google Ads (kept)
-- Facebook/Meta Ads (kept)
-- Psychology Today
-- Zocdoc
-- Healthgrades
-- Insurance Network Referrals
-- Physician Referrals
-- Community Health Events
-- Employer Wellness Programs
-
-### Professional Services
-- Google Ads (kept)
-- LinkedIn Ads (kept)
-- Speaking Engagements
-- Webinars/Online Events
-- Podcast Appearances
-- Industry Conferences
-- Strategic Partnerships
-- Content Marketing/Blog
-
----
-
-## Expected Outcome
-
-After this fix:
-1. Select "Health & Wellness" on Dashboard
-2. Create session and go to Canvas
-3. Reach qualification question
-4. See relevant options: "Insurance Verified", "Patient Fit", "Treatment Timeline" etc.
-5. No more "Homeowner Verified" for non-home-services industries
-
----
+```
+┌──────────────────────────┐
+│ 📣 LEAD SOURCE           │
+├──────────────────────────┤
+│ Facebook/Meta Ads        │
+│ ┌─────────┐ ┌─────────┐  │
+│ │📊 65/mo │ │💵 $500  │  │
+│ └─────────┘ └─────────┘  │
+└──────────────────────────┘
+```
 
 ## Testing Checklist
 
-- [x] Create session with "Home Services" → see home-specific qualification options
-- [x] Create session with "Healthcare & Wellness" → see health-specific options
-- [x] Create session with "Professional Services" → see B2B-appropriate options
-- [x] Create session with no industry (blank) → see generic options
-- [x] Lead source options also adapt appropriately
-- [x] Existing home services flows still work correctly
-
-## Implementation Complete ✅
-
-Industry-specific options are now defined in `src/types/industryOptions.ts` and resolved dynamically based on session industry.
+- [ ] Select 3 lead sources → all nodes show correct labels
+- [ ] Answer volume for each → volume badges appear on nodes
+- [ ] Answer spend for paid sources → spend badges appear
+- [ ] Labels remain clean (no "- 65/mo" appended to them)
+- [ ] Edit a node → see volume in edit form
+- [ ] Save/reload page → volume persists
