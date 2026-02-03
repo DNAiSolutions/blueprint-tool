@@ -1,13 +1,14 @@
 
 # ALIGN Canvas Builder Enhancement Plan
 
+## Implementation Status
+
+### Phase 1 (Critical - Immediate) ✅ COMPLETED
+1. ✅ Free node movement (disable auto-snapping) - DONE
+2. ✅ Multi-connection support - DONE  
+3. ✅ Reorder questions (process first, math last) - DONE
+
 ## Summary of Changes
-
-This plan addresses several interconnected improvements to make the canvas builder more flexible for live discovery calls with mental health businesses (and other industries).
-
----
-
-## 1. Free Node Movement (Disable Auto-Snapping)
 
 ### Current Behavior
 Nodes are automatically positioned based on their type using `calculateFunnelPositions()`. When you drag a node, it saves the new position, but the `positionedNodes` calculation overwrites it.

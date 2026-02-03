@@ -65,33 +65,33 @@ export function useQuestionFlow(sessionId?: string, industry?: Industry) {
     if (dynamicQuestions.length === 0) return resolvedQuestions;
     
     // Separate dynamic questions by section
-    const leadSourceDynamic = dynamicQuestions.filter(dq => dq.section === 'lead-sources');
     const leadHandlingDynamic = dynamicQuestions.filter(dq => dq.section === 'lead-handling');
-    
-    // Find insertion points
-    const q4Index = resolvedQuestions.findIndex(q => q.id === 'q4');
-    const intakeIndex = resolvedQuestions.findIndex(q => q.id === 'q_intake_methods');
+    const metricsDynamic = dynamicQuestions.filter(dq => dq.section === 'metrics');
     
     let result = [...resolvedQuestions];
     
-    // Insert lead source follow-ups after q4
-    if (q4Index !== -1 && leadSourceDynamic.length > 0) {
+    // Find insertion point for intake mapping questions (after q_intake_methods)
+    const intakeIndex = result.findIndex(q => q.id === 'q_intake_methods');
+    if (intakeIndex !== -1 && leadHandlingDynamic.length > 0) {
       result = [
-        ...result.slice(0, q4Index + 1),
-        ...leadSourceDynamic,
-        ...result.slice(q4Index + 1),
+        ...result.slice(0, intakeIndex + 1),
+        ...leadHandlingDynamic,
+        ...result.slice(intakeIndex + 1),
       ];
     }
     
-    // Insert intake mapping questions after q_intake_methods
-    // Need to recalculate index since we may have added questions
-    const newIntakeIndex = result.findIndex(q => q.id === 'q_intake_methods');
-    if (newIntakeIndex !== -1 && leadHandlingDynamic.length > 0) {
+    // Insert volume/spend questions at the START of metrics section
+    // Find the first metrics question
+    const firstMetricsIndex = result.findIndex(q => q.section === 'metrics');
+    if (firstMetricsIndex !== -1 && metricsDynamic.length > 0) {
       result = [
-        ...result.slice(0, newIntakeIndex + 1),
-        ...leadHandlingDynamic,
-        ...result.slice(newIntakeIndex + 1),
+        ...result.slice(0, firstMetricsIndex),
+        ...metricsDynamic,
+        ...result.slice(firstMetricsIndex),
       ];
+    } else if (metricsDynamic.length > 0) {
+      // If no metrics section yet, append at end
+      result = [...result, ...metricsDynamic];
     }
     
     return result;
