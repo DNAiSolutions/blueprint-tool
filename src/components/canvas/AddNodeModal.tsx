@@ -30,11 +30,14 @@ const NODE_TYPE_OPTIONS: { value: NodeType; label: string; icon: string; descrip
   { value: 'lead-source', label: 'Lead Source', icon: '📣', description: 'Where prospects come from' },
   { value: 'intake', label: 'Intake', icon: '📞', description: 'First contact handling' },
   { value: 'decision', label: 'Qualification', icon: '✅', description: 'Qualification/approval step' },
+  { value: 'verification', label: 'Verification', icon: '✔️', description: 'Insurance/eligibility check' },
+  { value: 'workflow', label: 'Workflow Step', icon: '⚙️', description: 'Intermediate process step' },
+  { value: 'handoff', label: 'Handoff', icon: '🔄', description: 'Transfer to person/system' },
   { value: 'conversion', label: 'Conversion', icon: '📈', description: 'Sales call/meeting' },
   { value: 'close', label: 'Close', icon: '💰', description: 'Deal closure' },
   { value: 'fulfillment', label: 'Fulfillment', icon: '🏁', description: 'Post-sale delivery' },
   { value: 'review', label: 'Review', icon: '⭐', description: 'Reviews & Referrals' },
-  { value: 'custom', label: 'Custom', icon: '⚙️', description: 'Custom stage' },
+  { value: 'custom', label: 'Custom', icon: '📦', description: 'Custom stage' },
 ];
 
 export function AddNodeModal({ open, onOpenChange, onAdd }: AddNodeModalProps) {

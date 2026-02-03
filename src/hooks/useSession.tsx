@@ -17,6 +17,7 @@ interface SessionContextType {
   duplicateNode: (nodeId: string) => SessionNode | undefined;
   clearSession: () => void;
   loadSession: (sessionId: string) => void;
+  deleteSession: (sessionId: string) => void;
 }
 
 const SessionContext = createContext<SessionContextType | null>(null);
@@ -228,6 +229,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setIsSessionReady(false);
   }, []);
 
+  const deleteSession = useCallback((sessionId: string) => {
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    
+    // If deleting the current session, clear it
+    if (currentSession?.id === sessionId) {
+      setCurrentSession(null);
+      setIsSessionReady(false);
+    }
+  }, [currentSession?.id]);
+
   const loadSession = useCallback((sessionId: string) => {
     // First, try to find in current in-memory sessions
     let session = sessions.find(s => s.id === sessionId);
@@ -281,6 +292,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         duplicateNode,
         clearSession,
         loadSession,
+        deleteSession,
       }}
     >
       {children}
