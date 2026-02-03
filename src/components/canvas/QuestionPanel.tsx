@@ -149,16 +149,14 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
       
       if (volumeMatch) {
         const sourceId = volumeMatch[1];
-        const sourceOption = LEAD_SOURCE_OPTIONS.find(o => o.value === sourceId);
-        // Update the existing node with volume
+        // Update the existing node with volume only - don't override label
         onNodeCreate('lead-source-update', {
           sourceId: sourceId,
           volume: parsedValue,
-          label: `${sourceOption?.label || sourceId} - ${parsedValue}/mo`,
         });
       } else if (spendMatch) {
         const sourceId = spendMatch[1];
-        // Update the existing node with spend
+        // Update the existing node with spend only - don't override label
         onNodeCreate('lead-source-update', {
           sourceId: sourceId,
           spend: parsedValue,
