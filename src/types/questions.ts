@@ -78,8 +78,9 @@ import {
   LEAD_SOURCE_OPTIONS_HOME_SERVICES,
   QUALIFICATION_OPTIONS_HOME_SERVICES,
   INTAKE_OPTIONS_HOME_SERVICES,
+  getLeadSourceOptionsForIndustry,
+  getIntakeOptionsForIndustry,
 } from './industryOptions';
-
 export const LEAD_SOURCE_OPTIONS: SelectOption[] = LEAD_SOURCE_OPTIONS_HOME_SERVICES;
 
 // ============================================
@@ -486,11 +487,17 @@ export function getSections(): QuestionSection[] {
 
 // Generate dynamic follow-up questions for selected lead sources
 // These are now injected into the METRICS phase, not immediately after q4
-export function generateLeadSourceFollowUps(selectedSources: string[]): Question[] {
+export function generateLeadSourceFollowUps(
+  selectedSources: string[],
+  industry?: import('./session').Industry
+): Question[] {
   const questions: Question[] = [];
   
+  // Get industry-specific lead source options
+  const leadSourceOptions = getLeadSourceOptionsForIndustry(industry);
+  
   selectedSources.forEach((sourceValue) => {
-    const sourceOption = LEAD_SOURCE_OPTIONS.find(o => o.value === sourceValue);
+    const sourceOption = leadSourceOptions.find(o => o.value === sourceValue);
     if (!sourceOption) return;
     
     const sourceLabel = sourceOption.label;
@@ -529,12 +536,17 @@ export function generateLeadSourceFollowUps(selectedSources: string[]): Question
 // Generate intake-to-source mapping questions
 export function generateIntakeMappingQuestions(
   selectedSources: string[],
-  selectedIntakes: string[]
+  selectedIntakes: string[],
+  industry?: import('./session').Industry
 ): Question[] {
   const questions: Question[] = [];
   
+  // Get industry-specific options
+  const leadSourceOptions = getLeadSourceOptionsForIndustry(industry);
+  const intakeOptions = getIntakeOptionsForIndustry(industry);
+  
   selectedSources.forEach((sourceValue) => {
-    const sourceOption = LEAD_SOURCE_OPTIONS.find(o => o.value === sourceValue);
+    const sourceOption = leadSourceOptions.find(o => o.value === sourceValue);
     if (!sourceOption) return;
     
     // Create a mapping question for each lead source
@@ -545,7 +557,7 @@ export function generateIntakeMappingQuestions(
       question: `Which intake methods apply to ${sourceOption.label}?`,
       type: 'multi-select',
       options: selectedIntakes.map(intake => {
-        const intakeOption = INTAKE_METHOD_OPTIONS.find(o => o.value === intake);
+        const intakeOption = intakeOptions.find(o => o.value === intake);
         return {
           value: intake,
           label: intakeOption?.label || intake,

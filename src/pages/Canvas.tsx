@@ -28,6 +28,8 @@ import {
   Trash2,
   Copy,
   AlertTriangle,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import dnaiLogo from '@/assets/dnai-logo.png';
 import { QuestionPanel } from '@/components/canvas/QuestionPanel';
@@ -54,6 +56,7 @@ export default function Canvas() {
   const { currentSession, loadSession, addNode, updateNode, deleteNode, duplicateNode, isSessionReady } = useSession();
   const { user } = useAuth();
   const [canvasWidth, setCanvasWidth] = useState(1000);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // Connect mode state
@@ -484,129 +487,139 @@ export default function Canvas() {
           }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          {/* Canvas Grid Background */}
+          {/* Zoomable Canvas Content */}
           <div 
-            className="absolute inset-0 min-h-[900px]"
+            className="absolute inset-0 origin-top-left transition-transform duration-150"
             style={{
-              backgroundImage: `
-                linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
-                linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
-              `,
-              backgroundSize: '24px 24px',
+              transform: `scale(${zoomLevel})`,
+              minWidth: `${100 / zoomLevel}%`,
+              minHeight: `${100 / zoomLevel}%`,
             }}
-            ref={(el) => {
-              if (el) {
-                const width = el.clientWidth;
-                if (width !== canvasWidth) {
-                  setCanvasWidth(width);
+          >
+            {/* Canvas Grid Background */}
+            <div 
+              className="absolute inset-0 min-h-[900px]"
+              style={{
+                backgroundImage: `
+                  linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
+                  linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
+                `,
+                backgroundSize: '24px 24px',
+              }}
+              ref={(el) => {
+                if (el) {
+                  const width = el.clientWidth;
+                  if (width !== canvasWidth) {
+                    setCanvasWidth(width);
+                  }
                 }
-              }
-            }}
-          />
+              }}
+            />
 
-          {/* Funnel Level Labels */}
-          <div className="absolute left-4 top-0 bottom-0 w-24 pointer-events-none">
-            {FUNNEL_LEVELS.map((level) => (
-              <div
-                key={level.name}
-                className="absolute text-xs text-muted-foreground/50 font-medium uppercase tracking-wider"
-                style={{ top: level.yOffset + 20 }}
-              >
-                {level.name.replace(/-/g, ' ')}
+            {/* Funnel Level Labels */}
+            <div className="absolute left-4 top-0 bottom-0 w-24 pointer-events-none">
+              {FUNNEL_LEVELS.map((level) => (
+                <div
+                  key={level.name}
+                  className="absolute text-xs text-muted-foreground/50 font-medium uppercase tracking-wider"
+                  style={{ top: level.yOffset + 20 }}
+                >
+                  {level.name.replace(/-/g, ' ')}
+                </div>
+              ))}
+            </div>
+
+            {/* Canvas Content - Empty State */}
+            {(!currentSession?.nodes || currentSession.nodes.length === 0) && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center max-w-md p-8">
+                  <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/10 border border-accent/20">
+                    <Plus className="h-10 w-10 text-accent" />
+                  </div>
+                  <h2 className="mb-2 text-xl font-semibold text-foreground">
+                    Start Building Your Map
+                  </h2>
+                  <p className="mb-6 text-muted-foreground text-sm">
+                    Answer the questions on the left to guide your discovery call. Nodes will be created automatically as you progress.
+                  </p>
+                  <Button onClick={() => setShowAddModal(true)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Node Manually
+                  </Button>
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* SVG for Connectors */}
+            {positionedNodes.length > 0 && (
+              <ConnectorsSVG 
+                nodes={positionedNodes} 
+                selectedNodeId={selectedNodeId || undefined}
+                nodeMetrics={metrics.nodeMetrics}
+                onConnectorClick={handleConnectorClick}
+              />
+            )}
+
+            {/* Render Nodes with Context Menu */}
+            {positionedNodes.length > 0 && (
+              <div className="absolute inset-0 min-h-[900px]">
+                {positionedNodes.map((node) => (
+                  <ContextMenu key={node.id}>
+                    <ContextMenuTrigger asChild>
+                      <div>
+                        <CanvasNode
+                          node={node}
+                          isSelected={node.id === selectedNodeId || node.id === pendingFromNodeId}
+                          onClick={handleNodeClick}
+                          onDoubleClick={handleNodeDoubleClick}
+                          onDragEnd={handleNodeDragEnd}
+                          onContextMenu={handleContextMenu}
+                        />
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem onClick={() => {
+                        setEditingNode(node);
+                        setShowEditModal(true);
+                      }}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => {
+                        duplicateNode(node.id);
+                        toast.success(`Duplicated "${node.label}"`);
+                      }}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicate
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem 
+                        onClick={() => {
+                          if (window.confirm(`Delete "${node.label}"?`)) {
+                            deleteNode(node.id);
+                            setSelectedNodeId(null);
+                            toast.success('Node deleted');
+                          }
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Connect Mode Indicator */}
+          {/* Connect Mode Indicator - Outside zoom container so it stays fixed */}
           {isConnectMode && pendingFromNode && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-accent text-accent-foreground shadow-lg">
               <p className="text-sm font-medium">
                 Connecting from: <strong>{pendingFromNode.label}</strong>
               </p>
               <p className="text-xs opacity-80">Click another node or click same node to cancel</p>
-            </div>
-          )}
-
-          {/* Canvas Content - Empty State */}
-          {(!currentSession?.nodes || currentSession.nodes.length === 0) && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center max-w-md p-8">
-                <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/10 border border-accent/20">
-                  <Plus className="h-10 w-10 text-accent" />
-                </div>
-                <h2 className="mb-2 text-xl font-semibold text-foreground">
-                  Start Building Your Map
-                </h2>
-                <p className="mb-6 text-muted-foreground text-sm">
-                  Answer the questions on the left to guide your discovery call. Nodes will be created automatically as you progress.
-                </p>
-                <Button onClick={() => setShowAddModal(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Node Manually
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* SVG for Connectors */}
-          {positionedNodes.length > 0 && (
-            <ConnectorsSVG 
-              nodes={positionedNodes} 
-              selectedNodeId={selectedNodeId || undefined}
-              nodeMetrics={metrics.nodeMetrics}
-              onConnectorClick={handleConnectorClick}
-            />
-          )}
-
-          {/* Render Nodes with Context Menu */}
-          {positionedNodes.length > 0 && (
-            <div className="absolute inset-0 min-h-[900px]">
-              {positionedNodes.map((node) => (
-                <ContextMenu key={node.id}>
-                  <ContextMenuTrigger asChild>
-                    <div>
-                      <CanvasNode
-                        node={node}
-                        isSelected={node.id === selectedNodeId || node.id === pendingFromNodeId}
-                        onClick={handleNodeClick}
-                        onDoubleClick={handleNodeDoubleClick}
-                        onDragEnd={handleNodeDragEnd}
-                        onContextMenu={handleContextMenu}
-                      />
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem onClick={() => {
-                      setEditingNode(node);
-                      setShowEditModal(true);
-                    }}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => {
-                      duplicateNode(node.id);
-                      toast.success(`Duplicated "${node.label}"`);
-                    }}>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Duplicate
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem 
-                      onClick={() => {
-                        if (window.confirm(`Delete "${node.label}"?`)) {
-                          deleteNode(node.id);
-                          setSelectedNodeId(null);
-                          toast.success('Node deleted');
-                        }
-                      }}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
             </div>
           )}
 
@@ -651,6 +664,33 @@ export default function Canvas() {
                 <div className="w-px h-6 bg-border" />
               </>
             )}
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.1))}
+                disabled={zoomLevel <= 0.25}
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground w-12 text-center">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setZoomLevel(z => Math.min(2, z + 0.1))}
+                disabled={zoomLevel >= 2}
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="w-px h-6 bg-border" />
             
             <Button variant="ghost" size="sm" className="gap-2">
               <BarChart3 className="h-4 w-4" />

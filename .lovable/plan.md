@@ -1,141 +1,58 @@
 
-# Fix: Connect Lead Sources to Specific Intake Methods After Mapping Question
+# Completed: Industry-Aware Mapping Questions + Canvas Zoom
 
 ## Summary
 
-Currently, all lead sources automatically connect to all intake methods when intake nodes are created. Instead, connections should only be drawn AFTER the user answers "Which intake methods apply to [Lead Source]?" and should only connect THAT lead source to the SELECTED intake methods.
+Fixed two issues:
+1. **Missing intake mapping questions** - Lead sources using industry-specific options (like WebMD Directory, Patient Referrals for Healthcare) were being skipped because the generator functions used default Home Services options instead of industry-specific ones.
+2. **Added canvas zoom** - Users can now zoom in/out of the canvas using controls in the action bar.
 
 ---
 
-## Root Cause
+## Changes Made
 
-In `QuestionPanel.tsx` (line 113-114), when intake nodes are created, they have `autoConnectToLeadSources: true` which immediately connects every intake to every lead source.
+### Fix 1: Industry-Aware Dynamic Question Generation
 
-The mapping questions (`q_intake_map_*`) do run after, but they:
-1. Come too late - connections are already drawn
-2. Use the wrong connection direction (intake → source instead of source → intake)
+**Root Cause:**
+- `generateIntakeMappingQuestions()` and `generateLeadSourceFollowUps()` in `questions.ts` used hardcoded `LEAD_SOURCE_OPTIONS` (Home Services default) instead of industry-specific options
+- When a source like "webmd-directory" (Healthcare) wasn't found in the Home Services list, it was skipped with `if (!sourceOption) return;`
 
----
+**Solution:**
+- Updated both functions to accept an `industry` parameter
+- Now uses `getLeadSourceOptionsForIndustry(industry)` and `getIntakeOptionsForIndustry(industry)` to find source/intake labels
+- Updated `QuestionPanel.tsx` to pass the `industry` prop when calling these generators
 
-## Solution
+**Files Modified:**
+- `src/types/questions.ts` - Added industry parameter to generator functions, imported helper functions
+- `src/components/canvas/QuestionPanel.tsx` - Pass industry when generating dynamic questions
 
-### Step 1: Remove Auto-Connect from Intake Node Creation
+### Fix 2: Canvas Zoom Controls
 
-**File:** `src/components/canvas/QuestionPanel.tsx`
+**Solution:**
+- Added `zoomLevel` state (default 1, range 0.25 to 2)
+- Added ZoomIn/ZoomOut buttons to the action bar with percentage display
+- Wrapped canvas content (grid, labels, connectors, nodes) in a zoomable container with CSS transform
+- Connect Mode indicator stays fixed (outside zoom container)
 
-Change the intake node creation to NOT auto-connect:
-
-```typescript
-// BEFORE (line 114):
-autoConnectToLeadSources: isIntakeQuestion,
-
-// AFTER:
-autoConnectToLeadSources: false, // Connections are made via mapping questions
-```
-
-### Step 2: Fix Connection Direction in Mapping Question Handler
-
-**File:** `src/components/canvas/QuestionPanel.tsx`
-
-The current handler creates connections FROM intake TO source:
-```typescript
-onNodeCreate('intake-connection', {
-  intakeId: intakeId,
-  leadSourceId: leadSourceId,
-});
-```
-
-Change it to create connections FROM source TO intake:
-```typescript
-onNodeCreate('source-to-intake-connection', {
-  leadSourceId: leadSourceId,
-  intakeId: intakeId,
-});
-```
-
-### Step 3: Update Canvas.tsx to Handle New Connection Type
-
-**File:** `src/pages/Canvas.tsx`
-
-Add a new handler for `source-to-intake-connection` that adds the intake node ID to the lead source's `connections` array:
-
-```typescript
-if (nodeType === 'source-to-intake-connection') {
-  const leadSourceNode = currentSession.nodes.find(
-    n => n.sourceId === data.leadSourceId
-  );
-  const intakeNode = currentSession.nodes.find(
-    n => n.sourceId === data.intakeId
-  );
-  
-  if (leadSourceNode && intakeNode && updateNode) {
-    const existingConnections = leadSourceNode.connections || [];
-    if (!existingConnections.includes(intakeNode.id)) {
-      updateNode(leadSourceNode.id, {
-        connections: [...existingConnections, intakeNode.id],
-      });
-    }
-  }
-  return;
-}
-```
-
-### Step 4: Remove `sourceConnections` Rendering
-
-**File:** `src/components/canvas/CanvasConnector.tsx`
-
-Since we're now using regular `connections` for lead source → intake, we can simplify or remove the `sourceConnections` handling in `ConnectorsSVG`. However, keeping it as a backup for backward compatibility is fine.
+**Files Modified:**
+- `src/pages/Canvas.tsx` - Added zoom state, controls, and zoomable wrapper
 
 ---
 
-## Files to Modify
+## Manual Connection (Already Works)
 
-| File | Changes |
-|------|---------|
-| `src/components/canvas/QuestionPanel.tsx` | Remove `autoConnectToLeadSources: true` from intake creation; change `intake-connection` to `source-to-intake-connection` |
-| `src/pages/Canvas.tsx` | Add handler for `source-to-intake-connection` that connects lead source → intake |
-
----
-
-## Connection Flow Diagram
-
-```text
-BEFORE (Incorrect):
-┌──────────────────┐
-│ Select Intakes   │──→ ALL intakes connect to ALL sources immediately
-└──────────────────┘
-
-AFTER (Correct):
-┌──────────────────┐
-│ Select Intakes   │──→ Creates intake nodes (no connections)
-└──────────────────┘
-         ↓
-┌──────────────────────────────────────┐
-│ "Which intakes apply to Google Ads?" │──→ Connects Google Ads → [selected intakes]
-└──────────────────────────────────────┘
-         ↓
-┌──────────────────────────────────────┐
-│ "Which intakes apply to SEO?"        │──→ Connects SEO → [selected intakes]
-└──────────────────────────────────────┘
-```
-
----
-
-## Expected Result
-
-After this fix:
-1. Lead Sources appear (no connections yet)
-2. Intake Methods appear (no connections yet)
-3. For EACH lead source, user is asked "Which intake methods apply?"
-4. ONLY the selected intakes get connected to that specific lead source
-5. Canvas shows targeted arrows: `[Google Ads] → [Phone Calls]` instead of every source to every intake
+The user mentioned wanting to manually drag arrows between nodes. This already works via:
+- **Connect Mode** - Toggle the "Connect" switch in the action bar
+- Click a source node, then click a target node to create a connection
+- Connections can be removed by clicking on them
 
 ---
 
 ## Testing Checklist
 
-- [ ] Select 4 lead sources → 4 nodes appear, NO connections
-- [ ] Select 3 intake methods → 3 nodes appear, NO connections
-- [ ] Answer "Which intakes apply to Google Ads?" → Select 2 → ONLY 2 connections drawn from Google Ads
-- [ ] Answer next mapping question → Connections drawn only from that specific source
-- [ ] Final canvas shows targeted connections, not a web of all-to-all lines
+- [ ] Start new Healthcare session → Select 4 lead sources (Meta, SEO, WebMD, Patient Referrals)
+- [ ] Select 3 intake methods → Verify 4 mapping questions appear (one per lead source)
+- [ ] Each mapping question correctly names the lead source (not skipped)
+- [ ] Connections are drawn only to selected intakes after answering mapping questions
+- [ ] Zoom controls work: -/+ buttons adjust canvas scale from 25% to 200%
+- [ ] Connect Mode still works to manually link nodes
