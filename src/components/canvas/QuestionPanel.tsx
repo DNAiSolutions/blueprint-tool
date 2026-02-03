@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,7 +17,9 @@ import {
   FOLLOW_UP_OPTIONS,
   generateLeadSourceFollowUps,
   generateIntakeMappingQuestions,
+  getIndustryOptions,
 } from '@/types/questions';
+import { Industry } from '@/types/session';
 import { useQuestionFlow } from '@/hooks/useQuestionFlow';
 import { MultiSelectCheckbox } from '@/components/ui/multi-select-checkbox';
 import { ChevronDown, ChevronUp, Check, ArrowRight, SkipForward, AlertTriangle } from 'lucide-react';
@@ -25,10 +27,11 @@ import { cn } from '@/lib/utils';
 
 interface QuestionPanelProps {
   sessionId?: string;
+  industry?: Industry;
   onNodeCreate?: (nodeType: string, data: Record<string, any>) => void;
 }
 
-export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
+export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPanelProps) {
   const {
     currentQuestion,
     currentSection,
@@ -42,12 +45,15 @@ export function QuestionPanel({ sessionId, onNodeCreate }: QuestionPanelProps) {
     injectDynamicQuestions,
     selectedLeadSources,
     selectedIntakeMethods,
-  } = useQuestionFlow(sessionId);
+  } = useQuestionFlow(sessionId, industry);
 
   const [inputValue, setInputValue] = useState('');
   const [multiSelectValue, setMultiSelectValue] = useState<string[]>([]);
   const [showAllAnswered, setShowAllAnswered] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Get industry-specific options
+  const industryOptions = useMemo(() => getIndustryOptions(industry), [industry]);
 
   // Handle answer submission
   const handleSubmit = useCallback(() => {

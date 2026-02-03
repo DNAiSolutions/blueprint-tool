@@ -2,6 +2,14 @@
 // ALIGN Question Flow Types
 // ============================================
 
+// Re-export industry-specific options for external use
+export {
+  getLeadSourceOptionsForIndustry,
+  getQualificationOptionsForIndustry,
+  getIntakeOptionsForIndustry,
+  getIndustryOptions,
+} from './industryOptions';
+
 export type QuestionType = 'text' | 'number' | 'percentage' | 'currency' | 'select' | 'yes-no' | 'multi-select';
 
 export type QuestionSection = 
@@ -39,6 +47,7 @@ export interface Question {
   };
   allowCustom?: boolean; // Allow custom text input for multi-select
   dynamicFollowUp?: boolean; // Generates follow-up questions dynamically
+  optionKey?: 'leadSources' | 'qualificationCriteria' | 'intakeMethods'; // Key for industry-specific options
 }
 
 export interface QuestionAnswer {
@@ -61,83 +70,26 @@ export interface QuestionFlowState {
 }
 
 // ============================================
-// Lead Source Options (Comprehensive)
+// Lead Source Options (Default - Home Services)
+// Kept for backward compatibility
 // ============================================
-export const LEAD_SOURCE_OPTIONS: SelectOption[] = [
-  // Paid Ads
-  { value: 'google-ads', label: 'Google Ads', category: 'Paid Ads', isPaid: true },
-  { value: 'facebook-meta', label: 'Facebook/Meta Ads', category: 'Paid Ads', isPaid: true },
-  { value: 'tiktok-ads', label: 'TikTok Ads', category: 'Paid Ads', isPaid: true },
-  { value: 'youtube-ads', label: 'YouTube Ads', category: 'Paid Ads', isPaid: true },
-  { value: 'bing-ads', label: 'Bing/Microsoft Ads', category: 'Paid Ads', isPaid: true },
-  { value: 'nextdoor-ads', label: 'Nextdoor Ads', category: 'Paid Ads', isPaid: true },
-  { value: 'linkedin-ads', label: 'LinkedIn Ads', category: 'Paid Ads', isPaid: true },
-  
-  // Organic
-  { value: 'seo-website', label: 'SEO/Website', category: 'Organic' },
-  { value: 'google-my-business', label: 'Google My Business/Maps', category: 'Organic' },
-  { value: 'facebook-groups', label: 'Facebook Groups/Organic', category: 'Organic' },
-  { value: 'content-blog', label: 'Content/Blog', category: 'Organic' },
-  { value: 'youtube-organic', label: 'YouTube (Organic)', category: 'Organic' },
-  { value: 'instagram-organic', label: 'Instagram (Organic)', category: 'Organic' },
-  
-  // Referrals
-  { value: 'customer-referrals', label: 'Customer Referrals', category: 'Referrals' },
-  { value: 'partner-referrals', label: 'Partner/Contractor Referrals', category: 'Referrals' },
-  { value: 'realtor-referrals', label: 'Realtor Referrals', category: 'Referrals' },
-  { value: 'insurance-referrals', label: 'Insurance Agent Referrals', category: 'Referrals' },
-  
-  // Direct
-  { value: 'yard-signs', label: 'Yard Signs', category: 'Direct' },
-  { value: 'door-knocking', label: 'Door Knocking', category: 'Direct' },
-  { value: 'cold-calling', label: 'Cold Calling', category: 'Direct' },
-  { value: 'radio-tv', label: 'Radio/TV', category: 'Direct', isPaid: true },
-  { value: 'mailers-flyers', label: 'Mailers/Flyers', category: 'Direct', isPaid: true },
-  { value: 'billboards', label: 'Billboards', category: 'Direct', isPaid: true },
-  { value: 'vehicle-wraps', label: 'Vehicle Wraps', category: 'Direct' },
-  
-  // Events
-  { value: 'networking', label: 'Networking Events', category: 'Events' },
-  { value: 'trade-shows', label: 'Trade Shows', category: 'Events' },
-  { value: 'home-shows', label: 'Home Shows', category: 'Events' },
-  
-  // Lead Services
-  { value: 'angi-leads', label: 'Angi Leads', category: 'Lead Services', isPaid: true },
-  { value: 'homeadvisor', label: 'HomeAdvisor', category: 'Lead Services', isPaid: true },
-  { value: 'thumbtack', label: 'Thumbtack', category: 'Lead Services', isPaid: true },
-  { value: 'yelp-ads', label: 'Yelp Ads', category: 'Lead Services', isPaid: true },
-];
+import {
+  LEAD_SOURCE_OPTIONS_HOME_SERVICES,
+  QUALIFICATION_OPTIONS_HOME_SERVICES,
+  INTAKE_OPTIONS_HOME_SERVICES,
+} from './industryOptions';
+
+export const LEAD_SOURCE_OPTIONS: SelectOption[] = LEAD_SOURCE_OPTIONS_HOME_SERVICES;
 
 // ============================================
-// Intake Method Options
+// Intake Method Options (Default - Home Services)
 // ============================================
-export const INTAKE_METHOD_OPTIONS: SelectOption[] = [
-  { value: 'lead-forms', label: 'Lead Forms (website/landing page)', category: 'Digital' },
-  { value: 'phone-inbound', label: 'Phone Calls (inbound)', category: 'Phone' },
-  { value: 'phone-outbound', label: 'Phone Calls (VA/team calls them)', category: 'Phone' },
-  { value: 'text-sms', label: 'Text/SMS', category: 'Digital' },
-  { value: 'email', label: 'Email', category: 'Digital' },
-  { value: 'live-chat', label: 'Live Chat/Chatbot', category: 'Digital' },
-  { value: 'in-person', label: 'In-Person (walk-in, event)', category: 'In-Person' },
-  { value: 'social-dm', label: 'Social Media DM', category: 'Digital' },
-  { value: 'booking-calendar', label: 'Booking/Calendar Link', category: 'Digital' },
-];
+export const INTAKE_METHOD_OPTIONS: SelectOption[] = INTAKE_OPTIONS_HOME_SERVICES;
 
 // ============================================
-// Qualification Criteria Options
+// Qualification Criteria Options (Default - Home Services)
 // ============================================
-export const QUALIFICATION_OPTIONS: SelectOption[] = [
-  { value: 'budget-confirmed', label: 'Budget/Affordability Confirmed', category: 'Financial' },
-  { value: 'decision-maker', label: 'Decision Maker Present', category: 'Authority' },
-  { value: 'timeline-urgency', label: 'Timeline/Urgency Established', category: 'Timing' },
-  { value: 'clear-need', label: 'Clear Need Identified', category: 'Need' },
-  { value: 'service-area', label: 'In Service Area/Territory', category: 'Location' },
-  { value: 'property-type', label: 'Property Type Qualified', category: 'Property' },
-  { value: 'home-age', label: 'Home Age/Condition Met', category: 'Property' },
-  { value: 'insurance-claim', label: 'Insurance Involved (Y/N)', category: 'Financial' },
-  { value: 'financing-needed', label: 'Financing Needed (Y/N)', category: 'Financial' },
-  { value: 'homeowner-verified', label: 'Homeowner Verified', category: 'Authority' },
-];
+export const QUALIFICATION_OPTIONS: SelectOption[] = QUALIFICATION_OPTIONS_HOME_SERVICES;
 
 // ============================================
 // Response Time Options
