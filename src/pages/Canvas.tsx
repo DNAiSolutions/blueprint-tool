@@ -291,11 +291,12 @@ export default function Canvas() {
         n.sourceId === data.sourceId
       );
       if (existingNode && updateNode) {
-        updateNode(existingNode.id, {
-          volume: data.volume ?? existingNode.volume,
-          label: data.label || existingNode.label,
-          spend: data.spend ?? existingNode.spend,
-        });
+        // Only update fields that are explicitly provided
+        const updates: Partial<SessionNode> = {};
+        if (data.volume !== undefined) updates.volume = data.volume;
+        if (data.spend !== undefined) updates.spend = data.spend;
+        if (data.label) updates.label = data.label;
+        updateNode(existingNode.id, updates);
       }
       return;
     }
