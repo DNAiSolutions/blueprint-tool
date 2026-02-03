@@ -71,7 +71,7 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
 
       // If this question triggers dynamic follow-ups for lead sources (q4)
       if (currentQuestion.dynamicFollowUp && currentQuestion.id === 'q4') {
-        const followUpQuestions = generateLeadSourceFollowUps(multiSelectValue);
+        const followUpQuestions = generateLeadSourceFollowUps(multiSelectValue, industry);
         injectDynamicQuestions(followUpQuestions);
       }
 
@@ -79,7 +79,7 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
       if (currentQuestion.dynamicFollowUp && currentQuestion.id === 'q_intake_methods') {
         // Generate mapping questions: "Which intake methods apply to {source}?"
         if (selectedLeadSources && selectedLeadSources.length > 0) {
-          const mappingQuestions = generateIntakeMappingQuestions(selectedLeadSources, multiSelectValue);
+          const mappingQuestions = generateIntakeMappingQuestions(selectedLeadSources, multiSelectValue, industry);
           injectDynamicQuestions(mappingQuestions);
         }
       }
