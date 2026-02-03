@@ -24,7 +24,10 @@ export const NODE_LEVELS: Record<NodeType, number> = {
   'lead-source': 0,    // Top of funnel (widest)
   'intake': 1,         // Second row
   'decision': 2,       // Qualification level
+  'verification': 2,   // Same level as qualification
   'conversion': 3,     // Appointments/Calls
+  'workflow': 3,       // Intermediate workflow steps (same as conversion)
+  'handoff': 3,        // Handoff steps (same level)
   'close': 4,          // Close level
   'fulfillment': 5,    // Bottom (narrowest)
   'review': 5,         // Bottom (with fulfillment)

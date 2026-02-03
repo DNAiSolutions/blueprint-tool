@@ -11,6 +11,9 @@ const NODE_COLORS: Record<string, { border: string; bg: string }> = {
   'close': { border: 'hsl(145, 60%, 45%)', bg: 'hsl(145, 60%, 45%)' },           // Green #27AE60
   'fulfillment': { border: 'hsl(220, 15%, 40%)', bg: 'hsl(220, 15%, 40%)' },     // Dark Gray #34495E
   'review': { border: 'hsl(220, 15%, 40%)', bg: 'hsl(220, 15%, 40%)' },          // Dark Gray
+  'workflow': { border: 'hsl(45, 70%, 50%)', bg: 'hsl(45, 70%, 50%)' },          // Gold
+  'handoff': { border: 'hsl(200, 60%, 50%)', bg: 'hsl(200, 60%, 50%)' },         // Light Blue
+  'verification': { border: 'hsl(280, 60%, 55%)', bg: 'hsl(280, 60%, 55%)' },    // Purple
   'custom': { border: 'hsl(0, 0%, 50%)', bg: 'hsl(0, 0%, 50%)' },                // Gray
 };
 
@@ -50,7 +53,10 @@ export function CanvasNode({
       'close': '💰',
       'fulfillment': '🏁',
       'review': '⭐',
-      'custom': '⚙️',
+      'workflow': '⚙️',
+      'handoff': '🔄',
+      'verification': '✔️',
+      'custom': '📦',
     };
     return icons[node.type] || '📦';
   };

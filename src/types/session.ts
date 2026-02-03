@@ -32,6 +32,9 @@ export type NodeType =
   | 'close'
   | 'fulfillment'
   | 'review'
+  | 'workflow'      // Intermediate workflow step (qualified/disqualified paths)
+  | 'handoff'       // Handoff to person/system
+  | 'verification'  // Verification step (insurance, etc.)
   | 'custom';
 
 export type AIReadinessStatus = 'ready' | 'partial' | 'not-ready';

@@ -42,7 +42,7 @@ export interface Question {
   skipCondition?: (answers: QuestionAnswers) => boolean;
   coachingHint?: string;
   nodeCreation?: {
-    type: 'lead-source' | 'intake' | 'decision' | 'conversion' | 'close' | 'fulfillment' | 'review';
+    type: 'lead-source' | 'intake' | 'decision' | 'conversion' | 'close' | 'fulfillment' | 'review' | 'workflow' | 'verification' | 'handoff';
     field?: string;
     createPerSelection?: boolean; // Create individual nodes per multi-select choice
   };
@@ -115,6 +115,35 @@ export const FOLLOW_UP_OPTIONS: SelectOption[] = [
   { value: 'email-follow-up', label: 'Email follow-up', category: 'Digital' },
   { value: 'voicemail-text', label: 'Voicemail + text combo', category: 'Combined' },
   { value: 'automated-sequence', label: 'Automated follow-up sequence', category: 'Automated' },
+  { value: 'nothing', label: 'Nothing (DROP-OFF)', category: 'LEAK ALERT' },
+];
+
+// ============================================
+// Qualified Path Options (What happens when qualified)
+// ============================================
+export const QUALIFIED_PATH_OPTIONS: SelectOption[] = [
+  { value: 'schedule-consultation', label: 'Schedule Consultation', category: 'Scheduling' },
+  { value: 'schedule-intake', label: 'Schedule Intake Session', category: 'Scheduling' },
+  { value: 'send-intake-forms', label: 'Send Intake Forms', category: 'Documentation' },
+  { value: 'insurance-verification', label: 'Verify Insurance', category: 'Verification' },
+  { value: 'therapist-matching', label: 'Match with Provider/Therapist', category: 'Assignment' },
+  { value: 'assign-to-staff', label: 'Assign to Staff Member', category: 'Assignment' },
+  { value: 'send-welcome-packet', label: 'Send Welcome Packet', category: 'Communication' },
+  { value: 'collect-payment', label: 'Collect Initial Payment', category: 'Financial' },
+  { value: 'schedule-estimate', label: 'Schedule On-Site Estimate', category: 'Scheduling' },
+  { value: 'send-quote', label: 'Send Quote/Proposal', category: 'Documentation' },
+  { value: 'other', label: 'Other', category: 'Custom' },
+];
+
+// ============================================
+// Disqualified Path Options (What happens when NOT qualified)
+// ============================================
+export const DISQUALIFIED_PATH_OPTIONS: SelectOption[] = [
+  { value: 'refer-out', label: 'Refer to Another Provider', category: 'Referral' },
+  { value: 'add-to-nurture', label: 'Add to Nurture List', category: 'Future' },
+  { value: 'politely-decline', label: 'Politely Decline', category: 'Close' },
+  { value: 'waitlist', label: 'Add to Waitlist', category: 'Future' },
+  { value: 'send-resources', label: 'Send Resources/Alternatives', category: 'Referral' },
   { value: 'nothing', label: 'Nothing (DROP-OFF)', category: 'LEAK ALERT' },
 ];
 
@@ -253,29 +282,39 @@ export const QUESTIONS: Question[] = [
     },
     coachingHint: "This helps identify what makes someone a 'good fit'.",
   },
-  // NEW: What happens when qualified?
+  // What happens when qualified? (Multi-select to create workflow nodes)
   {
     id: 'q_qualified_path',
     section: 'qualification',
     sectionLabel: 'Qualification',
-    question: 'What happens when a lead IS qualified? (Next steps)',
-    type: 'text',
-    placeholder: 'e.g., Schedule consultation, send intake forms, assign to therapist',
+    question: 'What happens when a lead IS qualified? (Select all steps)',
+    type: 'multi-select',
+    options: QUALIFIED_PATH_OPTIONS,
     required: true,
+    allowCustom: true,
     skipCondition: (answers) => answers['q10']?.value === false,
-    coachingHint: "Walk me through the qualified path.",
+    nodeCreation: {
+      type: 'workflow',
+      createPerSelection: true, // Create individual nodes per step
+    },
+    coachingHint: "Select the steps that happen after qualification.",
   },
-  // NEW: What happens when disqualified?
+  // What happens when disqualified? (Multi-select to create workflow nodes)
   {
     id: 'q_disqualified_path',
     section: 'qualification',
     sectionLabel: 'Qualification',
-    question: 'What happens when a lead is NOT qualified? (Disqualification handling)',
-    type: 'text',
-    placeholder: 'e.g., Refer out, add to nurture list, politely decline',
+    question: 'What happens when a lead is NOT qualified? (Select handling)',
+    type: 'multi-select',
+    options: DISQUALIFIED_PATH_OPTIONS,
     required: false,
+    allowCustom: true,
     skipCondition: (answers) => answers['q10']?.value === false,
-    coachingHint: "Do you have a process for disqualified leads?",
+    nodeCreation: {
+      type: 'workflow',
+      createPerSelection: true,
+    },
+    coachingHint: "Select how you handle disqualified leads.",
   },
 
   // ─────────────────────────────────────────────
