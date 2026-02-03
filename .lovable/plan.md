@@ -1,316 +1,153 @@
 
-# ALIGN Canvas Builder Enhancement Plan
+# Fix: Qualification Criteria Not Creating Nodes
 
-## Implementation Status
+## Problem Identified
 
-### Phase 1 (Critical - Immediate) ✅ COMPLETED
-1. ✅ Free node movement (disable auto-snapping) - DONE
-2. ✅ Multi-connection support - DONE  
-3. ✅ Reorder questions (process first, math last) - DONE
+When you select qualification criteria (like "Patient Commitment Level"), no node appears in the Qualification section of the funnel.
 
-## Summary of Changes
+### Root Cause
 
-### Current Behavior
-Nodes are automatically positioned based on their type using `calculateFunnelPositions()`. When you drag a node, it saves the new position, but the `positionedNodes` calculation overwrites it.
+The node creation logic in `QuestionPanel.tsx` only handles multi-select questions when `createPerSelection === true`. The qualification question (q11) has `createPerSelection: false` (designed to create ONE decision node with all criteria), but **this code path was never implemented**.
 
-### Proposed Solution
-- **Preserve manual positions**: If a node has been manually positioned (dragged), respect that position instead of auto-calculating
-- **Add `isManuallyPositioned` flag** to `SessionNode` type
-- **Update funnel layout logic** to skip nodes that have been manually positioned
+**Current code (line 101):**
+```typescript
+if (currentQuestion.nodeCreation?.createPerSelection && onNodeCreate) {
+  // Only runs when createPerSelection is TRUE
+  // Qualification question has createPerSelection: FALSE, so this never runs
+}
+```
 
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/types/session.ts` | Add `isManuallyPositioned?: boolean` to `SessionNode` |
-| `src/utils/funnelLayout.ts` | Skip manually positioned nodes in `calculateFunnelPositions()` |
-| `src/pages/Canvas.tsx` | Set `isManuallyPositioned: true` when dragging ends |
+### What Should Happen
+
+When you select 4 qualification criteria:
+1. Create **one** "Qualification" decision node
+2. Store all selected criteria as metadata in that node
+3. Display the criteria inside the node (e.g., "4 criteria")
 
 ---
 
-## 2. Connect Multiple Nodes (Multi-Connection Support)
+## Solution
 
-### Current Behavior
-When you select multiple options in a multi-select question (e.g., 4 intake methods), nodes are created but connections aren't automatically made between all appropriate nodes.
+### Change 1: Add handling for `createPerSelection: false` in multi-select questions
 
-### Proposed Solution
-- **Enhance Connect Mode**: Already exists but needs to be more prominent
-- **Auto-connect logic**: When creating intake nodes, automatically connect them to ALL selected lead sources (not just one)
-- **Batch connection UI**: Add ability to select multiple target nodes when in connect mode
+**File:** `src/components/canvas/QuestionPanel.tsx`
 
-### Technical Changes
+After the existing `createPerSelection === true` block, add:
 
-**Auto-connect intake to all lead sources:**
 ```typescript
-// When intake nodes are created, connect to all lead sources
-leadSourceNodes.forEach(source => {
-  intakeNode.connections.push(source.id);
+// Handle single node with all selections (e.g., qualification criteria)
+if (currentQuestion.nodeCreation && !currentQuestion.nodeCreation.createPerSelection && onNodeCreate) {
+  const labels = multiSelectValue.map(value => {
+    const option = currentQuestion.options?.find(o => o.value === value);
+    return option?.label || value;
+  });
+  
+  onNodeCreate(currentQuestion.nodeCreation.type, {
+    label: `Qualification (${multiSelectValue.length} criteria)`,
+    criteria: multiSelectValue,  // Store all selected values
+    criteriaLabels: labels,      // Store human-readable labels
+    questionId: currentQuestion.id,
+  });
+}
+```
+
+### Change 2: Update Canvas.tsx to handle qualification node creation
+
+**File:** `src/pages/Canvas.tsx`
+
+The `handleNodeCreate` function needs to handle the new `criteria` field:
+
+```typescript
+addNode({
+  type: nodeType as any,
+  label: data.label || getNodeLabel(nodeType, data),
+  volume: data.volume || 0,
+  conversionRate: data.conversionRate || 0,
+  value: data.value || 0,
+  position: { x: 0, y: 0 },
+  connections: [],
+  // NEW: Store qualification criteria
+  criteria: data.criteria,
+  criteriaLabels: data.criteriaLabels,
 });
 ```
 
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/components/canvas/QuestionPanel.tsx` | Auto-connect intake nodes to all lead source nodes |
-| `src/pages/Canvas.tsx` | Enhance connect mode to support multi-selection |
+### Change 3: Update SessionNode type to include criteria
 
----
+**File:** `src/types/session.ts`
 
-## 3. Reorder Question Flow (Process First, Math Last)
+Add criteria fields to the SessionNode interface:
 
-### Current Behavior
-Questions mix qualitative (process mapping) and quantitative (metrics/percentages) questions throughout the flow.
-
-### Proposed Solution
-Reorganize questions into two phases:
-1. **Phase 1 - Process Mapping** (qualitative)
-   - Goals & context
-   - Lead sources (which ones, not volume yet)
-   - Intake methods
-   - Qualification criteria
-   - What happens when qualified/disqualified
-   - Conversion events (types, not rates)
-   - Fulfillment steps
-   - Reviews/referrals
-
-2. **Phase 2 - Metrics Collection** (quantitative)
-   - Volume per lead source
-   - Spend per paid source
-   - Conversion percentages
-   - Close rates
-   - Review/referral percentages
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/types/questions.ts` | Reorganize QUESTIONS array, move volume/spend/percentage questions to end |
-| `src/hooks/useQuestionFlow.tsx` | Support two-phase flow |
-
----
-
-## 4. Custom Workflow Nodes Between Stages
-
-### Current Behavior
-Only 8 node types exist: lead-source, intake, decision, conversion, close, fulfillment, review, custom
-
-### Proposed Solution
-- **Add new node types** for intermediate workflow steps:
-  - `workflow` - General workflow step (between any stages)
-  - `handoff` - Handoff to another person/system
-  - `verification` - Verification step (insurance, documents, etc.)
-  
-- **Allow custom positioning** in funnel levels (not locked to type)
-- **Add level property** to nodes so users can place them at any funnel level
-
-### New Node Types for Mental Health Workflow
-| Stage | Examples |
-|-------|----------|
-| Between Intake → Qualification | Insurance verification, Eligibility check |
-| Between Qualification → Conversion | Scheduling, Therapist matching |
-| Between Conversion → Close | First consultation, Treatment plan review |
-| Between Close → Fulfillment | Ongoing appointments, Progress tracking |
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/types/session.ts` | Add `workflow`, `handoff`, `verification` node types; add `funnelLevel?: number` |
-| `src/utils/funnelLayout.ts` | Update NODE_LEVELS to handle new types; respect custom `funnelLevel` |
-| `src/components/canvas/AddNodeModal.tsx` | Add new node type options |
-| `src/components/canvas/CanvasNode.tsx` | Add colors/icons for new types |
-
----
-
-## 5. Website Import Feature (Firecrawl Integration)
-
-### Proposed Solution
-At session creation, allow user to enter prospect's website URL and scrape it to:
-1. Extract business name, services, team info
-2. Pre-populate industry-specific context
-3. Generate tailored questions based on business type
-
-### Implementation Approach
-1. **Create Firecrawl edge function** to scrape website
-2. **Add website URL field** to session creation modal on Dashboard
-3. **Parse website content** to extract:
-   - Business name
-   - Services offered
-   - Team members/roles
-   - Contact methods
-4. **Use extracted data** to pre-fill session and suggest relevant questions
-
-### Files to Create/Modify
-| File | Changes |
-|------|---------|
-| `supabase/functions/firecrawl-scrape/index.ts` | Create edge function |
-| `src/lib/api/firecrawl.ts` | Create API client |
-| `src/pages/Dashboard.tsx` | Add website URL field to session creation |
-| `src/components/WebsiteImportModal.tsx` | New component for import flow |
-
----
-
-## 6. Qualified/Disqualified Path Mapping
-
-### Current Behavior
-Qualification is a single yes/no question with criteria selection.
-
-### Proposed Solution
-Add branching path questions:
-1. "What happens when a lead is **qualified**?" → Next steps workflow
-2. "What happens when a lead is **disqualified**?" → Disqualification handling
-3. Create separate node paths for each outcome
-
-### Visual Representation
-```
-                    ┌──────────────┐
-                    │ Qualification │
-                    │   Decision   │
-                    └──────┬───────┘
-                           │
-              ┌────────────┴────────────┐
-              │                         │
-              ▼                         ▼
-    ┌─────────────────┐       ┌─────────────────┐
-    │   QUALIFIED     │       │  DISQUALIFIED   │
-    │   Next Steps    │       │    Handling     │
-    └─────────────────┘       └─────────────────┘
-```
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/types/questions.ts` | Add qualified/disqualified path questions |
-| `src/components/canvas/QuestionPanel.tsx` | Handle branching node creation |
-
----
-
-## Implementation Priority
-
-### Phase 1 (Critical - Immediate)
-1. ✅ Free node movement (disable auto-snapping)
-2. ✅ Multi-connection support
-3. ✅ Reorder questions (process first, math last)
-
-### Phase 2 (Important - Next Sprint)
-4. Custom workflow nodes between stages
-5. Qualified/disqualified path mapping
-
-### Phase 3 (Enhancement - Future)
-6. Website import feature (requires Firecrawl connector)
-
----
-
-## Technical Implementation Details
-
-### 1. Free Node Movement
-
-**src/types/session.ts:**
 ```typescript
 export interface SessionNode {
   // ... existing fields
-  isManuallyPositioned?: boolean; // NEW: Respect manual position
-  funnelLevel?: number;           // NEW: Override funnel level
+  criteria?: string[];        // Array of qualification criteria IDs
+  criteriaLabels?: string[];  // Human-readable labels for display
 }
 ```
 
-**src/utils/funnelLayout.ts:**
+### Change 4: Display criteria in CanvasNode
+
+**File:** `src/components/canvas/CanvasNode.tsx`
+
+Show criteria count or list inside the decision node:
+
 ```typescript
-export function calculateFunnelPositions(
-  nodes: SessionNode[],
-  canvasCenterX: number = CANVAS_CENTER_X
-): SessionNode[] {
-  // Separate manually positioned vs auto-positioned nodes
-  const manualNodes = nodes.filter(n => n.isManuallyPositioned);
-  const autoNodes = nodes.filter(n => !n.isManuallyPositioned);
-  
-  // Only auto-position non-manual nodes
-  const positioned = autoPositionNodes(autoNodes, canvasCenterX);
-  
-  // Return both, preserving manual positions
-  return [...positioned, ...manualNodes];
-}
-```
-
-**src/pages/Canvas.tsx:**
-```typescript
-const handleNodeDragEnd = useCallback((nodeId: string, position: { x: number; y: number }) => {
-  updateNode(nodeId, { 
-    position,
-    isManuallyPositioned: true // Mark as manually positioned
-  });
-}, [updateNode]);
-```
-
-### 2. Auto-Connect Intake to Lead Sources
-
-**src/components/canvas/QuestionPanel.tsx:**
-```typescript
-// When intake nodes are created, auto-connect to all lead sources
-if (currentQuestion.id === 'q_intake_methods' && onNodeCreate) {
-  // Get all existing lead source node IDs
-  const leadSourceNodes = currentSession.nodes.filter(n => n.type === 'lead-source');
-  
-  multiSelectValue.forEach((intakeValue) => {
-    const option = currentQuestion.options?.find(o => o.value === intakeValue);
-    const label = option?.label || intakeValue;
-    
-    // Create intake node connected to ALL lead sources
-    onNodeCreate('intake', {
-      sourceId: intakeValue,
-      label: label,
-      connectTo: leadSourceNodes.map(n => n.id), // NEW: Connect to all sources
-    });
-  });
-}
-```
-
-### 3. Reordered Question Flow
-
-**New question order:**
-```typescript
-// PHASE 1: PROCESS MAPPING (Qualitative)
-q1: "What are you trying to grow?"
-q2: "Target annual revenue?"
-q3: "Biggest bottleneck?"
-q4: "Where do leads come from?" (multi-select, no volume yet)
-q_intake: "How do leads reach you?"
-q_response: "How quickly do you respond?"
-q_followup: "What happens if they don't answer?"
-q_qualify_yn: "Do you qualify leads?"
-q_qualify_criteria: "What criteria?"
-q_qualified_path: "What happens when QUALIFIED?"    // NEW
-q_disqualified_path: "What happens when DISQUALIFIED?" // NEW
-q_conversion_type: "What conversion events happen?"
-q_fulfillment: "What happens post-sale?"
-q_review: "Do you ask for reviews/referrals?"
-
-// PHASE 2: METRICS (Quantitative) - Moved to end
-q_volume_{source}: "How many leads from {source}?"
-q_spend_{source}: "Monthly spend on {source}?"
-q_qual_rate: "What % meet qualification?"
-q_schedule_rate: "What % schedule?"
-q_show_rate: "What % show up?"
-q_close_rate: "What's your close rate?"
-q_review_rate: "What % leave reviews?"
+{node.type === 'decision' && node.criteriaLabels && (
+  <div className="text-xs text-muted-foreground mt-1">
+    {node.criteriaLabels.length} criteria
+  </div>
+)}
 ```
 
 ---
 
-## Expected Outcome
+## Files to Modify
 
-After implementation:
-1. Reps can freely drag nodes anywhere on canvas
-2. Connecting nodes works manually via Connect Mode
-3. Multi-select creates properly connected nodes
-4. Questions flow naturally: draw process first, add metrics at end
-5. Custom workflow steps can be added between any stages
-6. (Future) Website import auto-populates session context
+| File | Changes |
+|------|---------|
+| `src/components/canvas/QuestionPanel.tsx` | Add handling for `createPerSelection: false` in multi-select |
+| `src/pages/Canvas.tsx` | Pass criteria data to addNode |
+| `src/types/session.ts` | Add `criteria` and `criteriaLabels` to SessionNode |
+| `src/components/canvas/CanvasNode.tsx` | Display criteria in decision nodes |
+
+---
+
+## Expected Result
+
+**Before (Current):**
+- Select 4 qualification criteria → Nothing happens
+- Qualification section remains empty
+
+**After (Fixed):**
+- Select 4 qualification criteria → Creates "Qualification" node
+- Node shows "4 criteria" badge
+- Clicking node shows full list of criteria
+
+---
+
+## Visual Example
+
+```
+┌──────────────────────────────┐
+│ ✅ DECISION                  │
+├──────────────────────────────┤
+│ Qualification                │
+│ ┌─────────────────────────┐  │
+│ │ 4 criteria              │  │
+│ └─────────────────────────┘  │
+│ • Patient Commitment Level   │
+│ • Insurance Verification     │
+│ • Treatment Timeline         │
+│ • Prior Authorization        │
+└──────────────────────────────┘
+```
 
 ---
 
 ## Testing Checklist
 
-- [ ] Drag a node → it stays where you put it (doesn't snap back)
-- [ ] Create multiple intake methods → all connect to all lead sources
-- [ ] Go through questions → process questions first, metrics at end
-- [ ] Add custom "Workflow" node → can place it between Qualification and Conversion
-- [ ] Mental health flow: map insurance verification, therapist matching, ongoing appointments
-- [ ] Export PDF → shows full custom flow accurately
+- [ ] Select qualification criteria → Node appears in Qualification section
+- [ ] Add more criteria → Node updates with correct count
+- [ ] Click on qualification node → See all criteria in detail
+- [ ] Export PDF → Qualification criteria are included
