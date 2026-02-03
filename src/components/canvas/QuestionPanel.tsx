@@ -99,13 +99,19 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
 
       // Create nodes for each selection if applicable
       if (currentQuestion.nodeCreation?.createPerSelection && onNodeCreate) {
+        // Get existing lead source nodes for auto-connecting intake methods
+        const isIntakeQuestion = currentQuestion.id === 'q_intake_methods';
+        
         multiSelectValue.forEach((value) => {
           const option = currentQuestion.options?.find(o => o.value === value);
           const label = option?.label || value.replace(/-/g, ' ');
+          
           onNodeCreate(currentQuestion.nodeCreation!.type, {
             sourceId: value,
             label: label,
             questionId: currentQuestion.id,
+            // For intake nodes, auto-connect to all lead sources
+            autoConnectToLeadSources: isIntakeQuestion,
           });
         });
       }

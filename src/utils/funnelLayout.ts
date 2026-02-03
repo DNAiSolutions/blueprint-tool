@@ -89,32 +89,39 @@ export function positionNodesAtLevel(
 /**
  * Calculate positions for all nodes based on their types
  * Groups nodes by level and positions them in a funnel shape
+ * Respects manually positioned nodes (isManuallyPositioned = true)
  */
 export function calculateFunnelPositions(
   nodes: SessionNode[],
   canvasCenterX: number = CANVAS_CENTER_X
 ): SessionNode[] {
-  // Group nodes by their funnel level
+  // Separate manually positioned nodes from auto-positioned ones
+  const manualNodes = nodes.filter(n => n.isManuallyPositioned);
+  const autoNodes = nodes.filter(n => !n.isManuallyPositioned);
+  
+  // Group auto-positioned nodes by their funnel level
   const nodesByLevel: Record<number, SessionNode[]> = {};
   
-  nodes.forEach(node => {
-    const level = NODE_LEVELS[node.type] ?? 3;
+  autoNodes.forEach(node => {
+    // Use custom funnelLevel if specified, otherwise use type-based level
+    const level = node.funnelLevel ?? NODE_LEVELS[node.type] ?? 3;
     if (!nodesByLevel[level]) {
       nodesByLevel[level] = [];
     }
     nodesByLevel[level].push(node);
   });
   
-  // Position nodes at each level
-  const positionedNodes: SessionNode[] = [];
+  // Position only auto-positioned nodes at each level
+  const positionedAutoNodes: SessionNode[] = [];
   
   Object.entries(nodesByLevel).forEach(([levelStr, levelNodes]) => {
     const level = parseInt(levelStr);
     const positioned = positionNodesAtLevel(levelNodes, level, canvasCenterX);
-    positionedNodes.push(...positioned);
+    positionedAutoNodes.push(...positioned);
   });
   
-  return positionedNodes;
+  // Return both: auto-positioned nodes + manual nodes (preserving their positions)
+  return [...positionedAutoNodes, ...manualNodes];
 }
 
 /**

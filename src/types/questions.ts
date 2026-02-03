@@ -18,7 +18,8 @@ export type QuestionSection =
   | 'lead-handling'
   | 'qualification'
   | 'conversion-events'
-  | 'fulfillment';
+  | 'fulfillment'
+  | 'metrics'; // NEW: Separate section for all quantitative questions
 
 export interface SelectOption {
   value: string;
@@ -118,10 +119,16 @@ export const FOLLOW_UP_OPTIONS: SelectOption[] = [
 ];
 
 // ============================================
-// Question Definitions
+// Question Definitions - REORDERED
+// Phase 1: Process Mapping (Qualitative)
+// Phase 2: Metrics Collection (Quantitative)
 // ============================================
 
 export const QUESTIONS: Question[] = [
+  // ═══════════════════════════════════════════════════════════
+  // PHASE 1: PROCESS MAPPING (Qualitative - Draw the flow first)
+  // ═══════════════════════════════════════════════════════════
+  
   // ─────────────────────────────────────────────
   // SECTION 1: Goals & Context
   // ─────────────────────────────────────────────
@@ -157,7 +164,7 @@ export const QUESTIONS: Question[] = [
   },
 
   // ─────────────────────────────────────────────
-  // SECTION 2: Lead Sources (MULTI-SELECT)
+  // SECTION 2: Lead Sources (MULTI-SELECT - No volume yet)
   // ─────────────────────────────────────────────
   {
     id: 'q4',
@@ -168,16 +175,13 @@ export const QUESTIONS: Question[] = [
     options: LEAD_SOURCE_OPTIONS,
     required: true,
     allowCustom: true,
-    dynamicFollowUp: true, // Triggers dynamic follow-up questions
+    dynamicFollowUp: true, // Triggers volume/spend questions in metrics phase
     nodeCreation: {
       type: 'lead-source',
-      createPerSelection: true, // Create one node per selected source
+      createPerSelection: true,
     },
-    coachingHint: "Select all sources - we'll dig into each one.",
+    coachingHint: "Select all sources - we'll get the numbers later.",
   },
-  // Dynamic questions for each lead source will be generated at runtime
-  // Template: "How many leads per month from {source}?" (number)
-  // Template: "What's your monthly spend on {source}?" (currency, if isPaid)
 
   // ─────────────────────────────────────────────
   // SECTION 3: Lead Handling (MULTI-SELECT)
@@ -198,7 +202,6 @@ export const QUESTIONS: Question[] = [
     },
     coachingHint: "Select all intake methods used across your lead sources.",
   },
-  // Dynamic: "Which intake methods apply to {lead source}?" (checkboxes)
   
   {
     id: 'q8',
@@ -223,7 +226,7 @@ export const QUESTIONS: Question[] = [
   },
 
   // ─────────────────────────────────────────────
-  // SECTION 4: Qualification (MULTI-SELECT)
+  // SECTION 4: Qualification (Process)
   // ─────────────────────────────────────────────
   {
     id: 'q10',
@@ -250,70 +253,50 @@ export const QUESTIONS: Question[] = [
     },
     coachingHint: "This helps identify what makes someone a 'good fit'.",
   },
+  // NEW: What happens when qualified?
   {
-    id: 'q12',
+    id: 'q_qualified_path',
     section: 'qualification',
     sectionLabel: 'Qualification',
-    question: 'Roughly what % of leads meet your qualification criteria?',
-    type: 'percentage',
-    placeholder: 'e.g., 50',
+    question: 'What happens when a lead IS qualified? (Next steps)',
+    type: 'text',
+    placeholder: 'e.g., Schedule consultation, send intake forms, assign to therapist',
     required: true,
-    minValue: 0,
-    maxValue: 100,
     skipCondition: (answers) => answers['q10']?.value === false,
-    coachingHint: "This is a key conversion point in your funnel.",
+    coachingHint: "Walk me through the qualified path.",
+  },
+  // NEW: What happens when disqualified?
+  {
+    id: 'q_disqualified_path',
+    section: 'qualification',
+    sectionLabel: 'Qualification',
+    question: 'What happens when a lead is NOT qualified? (Disqualification handling)',
+    type: 'text',
+    placeholder: 'e.g., Refer out, add to nurture list, politely decline',
+    required: false,
+    skipCondition: (answers) => answers['q10']?.value === false,
+    coachingHint: "Do you have a process for disqualified leads?",
   },
 
   // ─────────────────────────────────────────────
-  // SECTION 5: Conversion Events
+  // SECTION 5: Conversion Events (Process description)
   // ─────────────────────────────────────────────
   {
-    id: 'q13',
+    id: 'q_conversion_type',
     section: 'conversion-events',
     sectionLabel: 'Conversion Events',
-    question: 'Of qualified leads (or all leads if no qualification), how many schedule a call/appointment?',
-    type: 'percentage',
-    placeholder: 'e.g., 28',
+    question: 'What type of conversion event happens? (Call, consultation, estimate, etc.)',
+    type: 'text',
+    placeholder: 'e.g., Free consultation call, on-site estimate, intake session',
     required: true,
-    minValue: 0,
-    maxValue: 100,
     nodeCreation: {
       type: 'conversion',
-      field: 'conversionRate',
     },
-    coachingHint: "This measures booking rate.",
-  },
-  {
-    id: 'q14',
-    section: 'conversion-events',
-    sectionLabel: 'Conversion Events',
-    question: 'Of scheduled calls/appointments, how many actually happen (show rate)?',
-    type: 'percentage',
-    placeholder: 'e.g., 80',
-    required: true,
-    minValue: 0,
-    maxValue: 100,
-    coachingHint: "No-shows are a common leak point.",
-  },
-  {
-    id: 'q15',
-    section: 'conversion-events',
-    sectionLabel: 'Conversion Events',
-    question: "What's your close rate on calls/appointments that happen?",
-    type: 'percentage',
-    placeholder: 'e.g., 71',
-    required: true,
-    minValue: 0,
-    maxValue: 100,
-    nodeCreation: {
-      type: 'close',
-      field: 'conversionRate',
-    },
-    coachingHint: "Your close rate shows sales process effectiveness.",
+    coachingHint: "What's the key event before someone becomes a client?",
   },
 
   // ─────────────────────────────────────────────
-  // SECTION 6: Fulfillment
+  // SECTION 6: Fulfillment (Process)
   // ─────────────────────────────────────────────
   {
     id: 'q16',
@@ -340,10 +323,86 @@ export const QUESTIONS: Question[] = [
     },
     coachingHint: "Reviews and referrals close the loop.",
   },
+
+  // ═══════════════════════════════════════════════════════════
+  // PHASE 2: METRICS COLLECTION (Quantitative - Numbers time!)
+  // Dynamic volume/spend questions are injected here after q4
+  // ═══════════════════════════════════════════════════════════
+  
+  // ─────────────────────────────────────────────
+  // SECTION 7: Metrics (All numbers at the end)
+  // ─────────────────────────────────────────────
+  {
+    id: 'q12',
+    section: 'metrics',
+    sectionLabel: 'Metrics',
+    question: 'Roughly what % of leads meet your qualification criteria?',
+    type: 'percentage',
+    placeholder: 'e.g., 50',
+    required: true,
+    minValue: 0,
+    maxValue: 100,
+    skipCondition: (answers) => answers['q10']?.value === false,
+    coachingHint: "This is a key conversion point in your funnel.",
+  },
+  {
+    id: 'q13',
+    section: 'metrics',
+    sectionLabel: 'Metrics',
+    question: 'Of qualified leads (or all leads if no qualification), what % schedule a call/appointment?',
+    type: 'percentage',
+    placeholder: 'e.g., 28',
+    required: true,
+    minValue: 0,
+    maxValue: 100,
+    nodeCreation: {
+      type: 'conversion',
+      field: 'conversionRate',
+    },
+    coachingHint: "This measures booking rate.",
+  },
+  {
+    id: 'q14',
+    section: 'metrics',
+    sectionLabel: 'Metrics',
+    question: 'Of scheduled calls/appointments, what % actually happen (show rate)?',
+    type: 'percentage',
+    placeholder: 'e.g., 80',
+    required: true,
+    minValue: 0,
+    maxValue: 100,
+    coachingHint: "No-shows are a common leak point.",
+  },
+  {
+    id: 'q15',
+    section: 'metrics',
+    sectionLabel: 'Metrics',
+    question: "What's your close rate on calls/appointments that happen?",
+    type: 'percentage',
+    placeholder: 'e.g., 71',
+    required: true,
+    minValue: 0,
+    maxValue: 100,
+    nodeCreation: {
+      type: 'close',
+      field: 'conversionRate',
+    },
+    coachingHint: "Your close rate shows sales process effectiveness.",
+  },
+  {
+    id: 'q_avg_deal',
+    section: 'metrics',
+    sectionLabel: 'Metrics',
+    question: "What's your average deal value?",
+    type: 'currency',
+    placeholder: 'e.g., 5000',
+    required: true,
+    coachingHint: "This helps calculate revenue impact.",
+  },
   {
     id: 'q18',
-    section: 'fulfillment',
-    sectionLabel: 'Fulfillment',
+    section: 'metrics',
+    sectionLabel: 'Metrics',
     question: 'What % of clients leave a review or send a referral?',
     type: 'percentage',
     placeholder: 'e.g., 20',
@@ -363,6 +422,7 @@ export const SECTION_META: Record<QuestionSection, { label: string; icon: string
   'qualification': { label: 'Qualification', icon: '✅' },
   'conversion-events': { label: 'Conversion Events', icon: '📈' },
   'fulfillment': { label: 'Fulfillment', icon: '🏁' },
+  'metrics': { label: 'Metrics', icon: '📊' },
 };
 
 // Get questions for a specific section
@@ -386,20 +446,21 @@ export function getSections(): QuestionSection[] {
 }
 
 // Generate dynamic follow-up questions for selected lead sources
+// These are now injected into the METRICS phase, not immediately after q4
 export function generateLeadSourceFollowUps(selectedSources: string[]): Question[] {
   const questions: Question[] = [];
   
-  selectedSources.forEach((sourceValue, index) => {
+  selectedSources.forEach((sourceValue) => {
     const sourceOption = LEAD_SOURCE_OPTIONS.find(o => o.value === sourceValue);
     if (!sourceOption) return;
     
     const sourceLabel = sourceOption.label;
     
-    // Volume question for each source
+    // Volume question for each source - now in metrics section
     questions.push({
       id: `q_volume_${sourceValue}`,
-      section: 'lead-sources',
-      sectionLabel: 'Lead Sources',
+      section: 'metrics',
+      sectionLabel: 'Metrics',
       question: `How many leads per month from ${sourceLabel}?`,
       type: 'number',
       placeholder: 'e.g., 50',
@@ -412,8 +473,8 @@ export function generateLeadSourceFollowUps(selectedSources: string[]): Question
     if (sourceOption.isPaid) {
       questions.push({
         id: `q_spend_${sourceValue}`,
-        section: 'lead-sources',
-        sectionLabel: 'Lead Sources',
+        section: 'metrics',
+        sectionLabel: 'Metrics',
         question: `What's your monthly spend on ${sourceLabel}?`,
         type: 'currency',
         placeholder: 'e.g., 1500',

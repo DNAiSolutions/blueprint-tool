@@ -56,6 +56,9 @@ export interface SessionNode {
   // Metadata
   sourceId?: string;             // Original source value (e.g., 'google-ads')
   spend?: number;                // Monthly spend (for paid sources)
+  // Phase 1: Free node movement
+  isManuallyPositioned?: boolean; // Respect manual position instead of auto-layout
+  funnelLevel?: number;           // Override funnel level for custom positioning
 }
 
 export interface SessionMetrics {
