@@ -154,11 +154,17 @@ export function useQuestionFlow(sessionId?: string, industry?: Industry) {
   }, [state.answers, activeQuestions]);
 
   // Inject dynamic questions (called after multi-select answers)
+  // De-duplicates by id to prevent double-injection
   const injectDynamicQuestions = useCallback((questions: Question[]) => {
-    setState(prev => ({
-      ...prev,
-      dynamicQuestions: [...(prev.dynamicQuestions || []), ...questions],
-    }));
+    setState(prev => {
+      const existingIds = new Set((prev.dynamicQuestions || []).map(q => q.id));
+      const newQuestions = questions.filter(q => !existingIds.has(q.id));
+      if (newQuestions.length === 0) return prev;
+      return {
+        ...prev,
+        dynamicQuestions: [...(prev.dynamicQuestions || []), ...newQuestions],
+      };
+    });
   }, []);
 
   // Answer current question
@@ -189,23 +195,38 @@ export function useQuestionFlow(sessionId?: string, industry?: Industry) {
       // Find next question index
       let nextIndex = prev.currentQuestionIndex + 1;
       
-      // We need to recalculate active questions with new answers
-      const updatedAllQuestions = [...QUESTIONS];
+      // Rebuild the full question list matching allQuestions logic
+      // This ensures dynamic questions (lead-handling, metrics) are in the right places
       const dynamicQuestions = prev.dynamicQuestions || [];
-      const q4Index = updatedAllQuestions.findIndex(q => q.id === 'q4');
+      const leadHandlingDynamic = dynamicQuestions.filter(dq => dq.section === 'lead-handling');
+      const metricsDynamic = dynamicQuestions.filter(dq => dq.section === 'metrics');
       
-      let questionsToCheck: Question[];
-      if (q4Index !== -1 && dynamicQuestions.length > 0) {
+      // Start with static questions
+      let questionsToCheck = [...QUESTIONS];
+      
+      // Insert lead-handling dynamic questions after q_intake_methods
+      const intakeIndex = questionsToCheck.findIndex(q => q.id === 'q_intake_methods');
+      if (intakeIndex !== -1 && leadHandlingDynamic.length > 0) {
         questionsToCheck = [
-          ...updatedAllQuestions.slice(0, q4Index + 1),
-          ...dynamicQuestions.filter(dq => dq.section === 'lead-sources'),
-          ...updatedAllQuestions.slice(q4Index + 1),
+          ...questionsToCheck.slice(0, intakeIndex + 1),
+          ...leadHandlingDynamic,
+          ...questionsToCheck.slice(intakeIndex + 1),
         ];
-      } else {
-        questionsToCheck = updatedAllQuestions;
       }
       
-      // Filter by skip conditions
+      // Insert metrics dynamic questions at the start of metrics section
+      const firstMetricsIndex = questionsToCheck.findIndex(q => q.section === 'metrics');
+      if (firstMetricsIndex !== -1 && metricsDynamic.length > 0) {
+        questionsToCheck = [
+          ...questionsToCheck.slice(0, firstMetricsIndex),
+          ...metricsDynamic,
+          ...questionsToCheck.slice(firstMetricsIndex),
+        ];
+      } else if (metricsDynamic.length > 0) {
+        questionsToCheck = [...questionsToCheck, ...metricsDynamic];
+      }
+      
+      // Filter by skip conditions with new answers
       const updatedActiveQuestions = questionsToCheck.filter(q => {
         if (!q.skipCondition) return true;
         return !q.skipCondition(newAnswers);
