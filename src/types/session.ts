@@ -59,6 +59,9 @@ export interface SessionNode {
   // Phase 1: Free node movement
   isManuallyPositioned?: boolean; // Respect manual position instead of auto-layout
   funnelLevel?: number;           // Override funnel level for custom positioning
+  // Qualification criteria (for decision nodes)
+  criteria?: string[];            // Array of qualification criteria IDs
+  criteriaLabels?: string[];      // Human-readable labels for display
 }
 
 export interface SessionMetrics {

@@ -360,6 +360,9 @@ export default function Canvas() {
       leakReason: data.leakReason,
       // Store which lead sources this intake is connected to
       sourceConnections: connectToNodeIds.length > 0 ? connectToNodeIds : undefined,
+      // Store qualification criteria (for decision nodes)
+      criteria: data.criteria,
+      criteriaLabels: data.criteriaLabels,
     });
   }, [currentSession, addNode, updateNode]);
 

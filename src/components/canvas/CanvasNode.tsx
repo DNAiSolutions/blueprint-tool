@@ -215,6 +215,28 @@ export function CanvasNode({
         )}
       </div>
       
+      {/* Qualification Criteria Display */}
+      {node.type === 'decision' && node.criteriaLabels && node.criteriaLabels.length > 0 && (
+        <div className="mt-2 p-1.5 rounded bg-muted/50 border border-border">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
+            📋 {node.criteriaLabels.length} Criteria
+          </p>
+          <ul className="space-y-0.5">
+            {node.criteriaLabels.slice(0, 3).map((label, idx) => (
+              <li key={idx} className="text-[10px] text-foreground/80 flex items-start gap-1">
+                <span className="text-muted-foreground">•</span>
+                <span className="truncate">{label}</span>
+              </li>
+            ))}
+            {node.criteriaLabels.length > 3 && (
+              <li className="text-[10px] text-muted-foreground italic">
+                +{node.criteriaLabels.length - 3} more...
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+      
       {/* Leak Indicator */}
       {node.isLeak && (
         <div className="mt-2 p-1.5 rounded bg-red-500/10 border border-red-500/30">
