@@ -1,111 +1,193 @@
 
+# Fix: Industry-Specific Questions Not Aligned
 
-# Fix: Multi-Select Lead Sources Not Creating All Nodes
+## Problem Summary
 
-## Problem Identified
+You selected **Health & Wellness** as the industry, but the qualification criteria question shows options like "Homeowner Verified" and "Property Type Qualified" which only apply to home services businesses.
 
-When selecting multiple lead sources (e.g., 3 sources), only ONE node appears on the canvas. The issue is a **React state batching bug** in the `addNode` function.
+The question system is hardcoded for blue-collar/home services and doesn't adapt to the selected industry.
+
+---
 
 ## Root Cause
 
-In `src/hooks/useSession.tsx`, the `addNode` function:
+1. **Industry stored but not used**: The session correctly stores `industry: 'healthcare-wellness'` but this value is never passed to the question flow
+2. **Static option arrays**: All SelectOption arrays in `src/types/questions.ts` are hardcoded for home services
+3. **No filtering logic**: No mechanism exists to swap or filter options based on industry
 
-```typescript
-const addNode = useCallback((node: Omit<SessionNode, 'id'>) => {
-  if (!currentSession) return;
-  const newNode: SessionNode = { ...node, id: generateId() };
-  const updatedNodes = [...currentSession.nodes, newNode];  // BUG: uses stale closure
-  updateSession({ nodes: updatedNodes, status: 'in-progress' });
-}, [currentSession, updateSession]);
+---
+
+## Solution Architecture
+
+### 1. Create Industry-Specific Option Sets
+
+Define qualification criteria, lead sources, and intake methods that make sense for each industry category:
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  Industry Selection                                                  │
+│     ↓                                                               │
+│  Session.industry = 'healthcare-wellness'                           │
+│     ↓                                                               │
+│  QuestionPanel receives industry                                    │
+│     ↓                                                               │
+│  getQualificationOptionsForIndustry('healthcare-wellness')          │
+│     ↓                                                               │
+│  Returns: Patient Insurance, Referral Source, Treatment Fit, etc.   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-When `forEach` calls `addNode` 3 times in rapid succession:
-1. Call 1: reads `nodes = []`, adds node A → `[A]`
-2. Call 2: reads `nodes = []` (stale!), adds node B → `[B]` (overwrites!)
-3. Call 3: reads `nodes = []` (stale!), adds node C → `[C]` (overwrites!)
+### 2. Industry-Specific Qualification Criteria
 
-Only the LAST node survives because each call reads the stale `currentSession.nodes` before state updates.
+| Industry | Relevant Qualification Criteria |
+|----------|--------------------------------|
+| **Home Services** | Homeowner Verified, Property Type, Service Area, Budget Confirmed, Insurance Involved |
+| **Healthcare & Wellness** | Insurance/Payment Verified, Patient Fit (condition match), Referral Source, Consultation Completed, Treatment Timeline |
+| **Professional Services** | Budget Confirmed, Decision Maker Present, Project Scope Clear, Timeline Established |
+| **Childcare & Education** | Age Group Match, Schedule Fit, Location Proximity, Payment Method |
+| **Generic/Custom** | Budget Confirmed, Decision Maker Present, Timeline Established, Clear Need Identified |
 
-## Solution
+---
 
-Modify `addNode` to use a **functional state update** pattern that receives the previous state, ensuring each call builds on the actual current nodes:
+## Implementation Plan
 
-### Change 1: Update `addNode` in `useSession.tsx`
+### Phase 1: Define Industry-Specific Options
 
-**Before:**
+**File: `src/types/questions.ts`**
+
+Add new option sets for each industry:
+
+- `QUALIFICATION_OPTIONS_HOME_SERVICES` (current options)
+- `QUALIFICATION_OPTIONS_HEALTHCARE` (new)
+- `QUALIFICATION_OPTIONS_PROFESSIONAL` (new)
+- `QUALIFICATION_OPTIONS_CHILDCARE` (new)
+- `QUALIFICATION_OPTIONS_GENERIC` (fallback)
+
+Create a helper function:
 ```typescript
-const addNode = useCallback((node: Omit<SessionNode, 'id'>) => {
-  if (!currentSession) return;
-  const newNode: SessionNode = { ...node, id: generateId() };
-  const updatedNodes = [...currentSession.nodes, newNode];
-  updateSession({ nodes: updatedNodes, status: 'in-progress' });
-}, [currentSession, updateSession]);
+export function getQualificationOptionsForIndustry(industry?: string): SelectOption[]
 ```
 
-**After:**
+### Phase 2: Update Lead Source Options
+
+Some lead sources are industry-specific too:
+- **Home Services**: Angi, HomeAdvisor, Thumbtack, Yard Signs, Door Knocking
+- **Healthcare**: Psychology Today, Zocdoc, Health Insurance Networks, Physician Referrals
+- **Professional**: LinkedIn, Referrals, Speaking Events, Webinars
+
+Add:
 ```typescript
-const addNode = useCallback((node: Omit<SessionNode, 'id'>) => {
-  setCurrentSession(prev => {
-    if (!prev) return prev;
-    
-    const newNode: SessionNode = { ...node, id: generateId() };
-    const updated = {
-      ...prev,
-      nodes: [...prev.nodes, newNode],
-      status: 'in-progress' as const,
-      updatedAt: new Date(),
-    };
-    
-    // Also update sessions array
-    setSessions(sessions => sessions.map(s => s.id === updated.id ? updated : s));
-    return updated;
-  });
-}, []);
+export function getLeadSourceOptionsForIndustry(industry?: string): SelectOption[]
 ```
 
-This uses the functional form of `setState` which guarantees access to the **current** state, not a stale closure.
+### Phase 3: Pass Industry to Question Flow
 
-### Change 2: Also fix `updateSession` for consistency
+**File: `src/components/canvas/QuestionPanel.tsx`**
 
-Apply the same pattern to `updateSession` to prevent similar issues:
+- Add `industry` prop to `QuestionPanelProps`
+- Use industry when rendering multi-select options
 
-```typescript
-const updateSession = useCallback((updates: Partial<AlignSession>) => {
-  setCurrentSession(prev => {
-    if (!prev) return prev;
-    
-    const updated = {
-      ...prev,
-      ...updates,
-      updatedAt: new Date(),
-    };
-    
-    setSessions(sessions => sessions.map(s => s.id === updated.id ? updated : s));
-    return updated;
-  });
-}, []);
-```
+**File: `src/pages/Canvas.tsx`**
 
-## Files to Modify
+- Pass `currentSession.industry` to `<QuestionPanel>`
 
-| File | Change |
-|------|--------|
-| `src/hooks/useSession.tsx` | Update `addNode` and `updateSession` to use functional state updates |
+### Phase 4: Dynamic Question Option Resolution
+
+**File: `src/hooks/useQuestionFlow.tsx`**
+
+- Accept `industry` parameter
+- Override question options at runtime based on industry
+
+---
+
+## Files to Create/Modify
+
+| File | Changes |
+|------|---------|
+| `src/types/questions.ts` | Add industry-specific option sets + helper functions |
+| `src/components/canvas/QuestionPanel.tsx` | Accept and use `industry` prop |
+| `src/pages/Canvas.tsx` | Pass `industry` to QuestionPanel |
+| `src/hooks/useQuestionFlow.tsx` | Accept `industry` parameter for dynamic filtering |
+
+---
+
+## New Qualification Options by Industry
+
+### Healthcare & Wellness
+- Insurance/Payment Method Verified
+- Condition/Treatment Fit
+- Patient Referral Source Identified
+- Consultation/Assessment Completed
+- Treatment Timeline Established
+- In-Network or Self-Pay Confirmed
+- Medical History Reviewed
+
+### Professional Services
+- Budget/Investment Confirmed
+- Decision Maker Present
+- Project Scope Defined
+- Timeline/Urgency Established
+- Contract Authority Verified
+- Business Size/Type Qualified
+
+### Childcare & Education
+- Age Group Match
+- Schedule Availability Fit
+- Location/Transportation Verified
+- Payment Method Confirmed
+- Special Needs Assessment (if applicable)
+- Enrollment Capacity Available
+
+### Generic (Fallback)
+- Budget Confirmed
+- Decision Maker Present
+- Timeline Established
+- Clear Need Identified
+- Service Area Confirmed
+
+---
+
+## New Lead Source Options by Industry
+
+### Healthcare & Wellness
+- Google Ads (kept)
+- Facebook/Meta Ads (kept)
+- Psychology Today
+- Zocdoc
+- Healthgrades
+- Insurance Network Referrals
+- Physician Referrals
+- Community Health Events
+- Employer Wellness Programs
+
+### Professional Services
+- Google Ads (kept)
+- LinkedIn Ads (kept)
+- Speaking Engagements
+- Webinars/Online Events
+- Podcast Appearances
+- Industry Conferences
+- Strategic Partnerships
+- Content Marketing/Blog
+
+---
 
 ## Expected Outcome
 
 After this fix:
-1. Select 3 lead sources (e.g., Google My Business, Mailers/Flyers, Networking Events)
-2. Click "Answer & Continue"
-3. **All 3 nodes appear** on the canvas, spread horizontally at the top of the funnel
-4. Follow-up volume questions are generated for each source
-5. As you answer volume questions, each node is updated with its volume
+1. Select "Health & Wellness" on Dashboard
+2. Create session and go to Canvas
+3. Reach qualification question
+4. See relevant options: "Insurance Verified", "Patient Fit", "Treatment Timeline" etc.
+5. No more "Homeowner Verified" for non-home-services industries
+
+---
 
 ## Testing Checklist
 
-- [ ] Select 3+ lead sources → all appear as separate nodes
-- [ ] Select 3+ intake methods → all appear as separate nodes
-- [ ] Nodes are positioned horizontally at their correct funnel level
-- [ ] Volume data updates the correct node when answered
-- [ ] Page refresh preserves all nodes (localStorage persistence)
-
+- [ ] Create session with "Home Services" → see home-specific qualification options
+- [ ] Create session with "Healthcare & Wellness" → see health-specific options
+- [ ] Create session with "Professional Services" → see B2B-appropriate options
+- [ ] Create session with no industry (blank) → see generic options
+- [ ] Lead source options also adapt appropriately
+- [ ] Existing home services flows still work correctly
