@@ -185,9 +185,13 @@ After this fix:
 
 ## Testing Checklist
 
-- [ ] Create session with "Home Services" → see home-specific qualification options
-- [ ] Create session with "Healthcare & Wellness" → see health-specific options
-- [ ] Create session with "Professional Services" → see B2B-appropriate options
-- [ ] Create session with no industry (blank) → see generic options
-- [ ] Lead source options also adapt appropriately
-- [ ] Existing home services flows still work correctly
+- [x] Create session with "Home Services" → see home-specific qualification options
+- [x] Create session with "Healthcare & Wellness" → see health-specific options
+- [x] Create session with "Professional Services" → see B2B-appropriate options
+- [x] Create session with no industry (blank) → see generic options
+- [x] Lead source options also adapt appropriately
+- [x] Existing home services flows still work correctly
+
+## Implementation Complete ✅
+
+Industry-specific options are now defined in `src/types/industryOptions.ts` and resolved dynamically based on session industry.

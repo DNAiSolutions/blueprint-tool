@@ -7,7 +7,9 @@ import {
   QUESTIONS,
   SECTION_META,
   getSections,
+  getIndustryOptions,
 } from '@/types/questions';
+import { Industry } from '@/types/session';
 
 const INITIAL_STATE: QuestionFlowState = {
   currentQuestionIndex: 0,
@@ -19,7 +21,7 @@ const INITIAL_STATE: QuestionFlowState = {
   selectedIntakeMethods: [],
 };
 
-export function useQuestionFlow(sessionId?: string) {
+export function useQuestionFlow(sessionId?: string, industry?: Industry) {
   const [state, setState] = useState<QuestionFlowState>(() => {
     // Try to load from localStorage
     if (sessionId) {
@@ -35,22 +37,42 @@ export function useQuestionFlow(sessionId?: string) {
     return INITIAL_STATE;
   });
 
-  // Combine static questions with dynamic ones
+  // Get industry-specific options
+  const industryOptions = useMemo(() => getIndustryOptions(industry), [industry]);
+
+  // Combine static questions with dynamic ones and resolve industry-specific options
   const allQuestions = useMemo(() => {
-    const staticQuestions = [...QUESTIONS];
+    // First, resolve industry-specific options for static questions
+    const resolvedQuestions = QUESTIONS.map(q => {
+      if (q.optionKey && industryOptions[q.optionKey]) {
+        return { ...q, options: industryOptions[q.optionKey] };
+      }
+      // Also resolve specific question IDs that need industry options
+      if (q.id === 'q4') {
+        return { ...q, options: industryOptions.leadSources };
+      }
+      if (q.id === 'q_intake_methods') {
+        return { ...q, options: industryOptions.intakeMethods };
+      }
+      if (q.id === 'q11') {
+        return { ...q, options: industryOptions.qualificationCriteria };
+      }
+      return q;
+    });
+
     const dynamicQuestions = state.dynamicQuestions || [];
     
-    if (dynamicQuestions.length === 0) return staticQuestions;
+    if (dynamicQuestions.length === 0) return resolvedQuestions;
     
     // Separate dynamic questions by section
     const leadSourceDynamic = dynamicQuestions.filter(dq => dq.section === 'lead-sources');
     const leadHandlingDynamic = dynamicQuestions.filter(dq => dq.section === 'lead-handling');
     
     // Find insertion points
-    const q4Index = staticQuestions.findIndex(q => q.id === 'q4');
-    const intakeIndex = staticQuestions.findIndex(q => q.id === 'q_intake_methods');
+    const q4Index = resolvedQuestions.findIndex(q => q.id === 'q4');
+    const intakeIndex = resolvedQuestions.findIndex(q => q.id === 'q_intake_methods');
     
-    let result = [...staticQuestions];
+    let result = [...resolvedQuestions];
     
     // Insert lead source follow-ups after q4
     if (q4Index !== -1 && leadSourceDynamic.length > 0) {
@@ -73,7 +95,7 @@ export function useQuestionFlow(sessionId?: string) {
     }
     
     return result;
-  }, [state.dynamicQuestions]);
+  }, [state.dynamicQuestions, industryOptions]);
 
   // Get questions that should be shown (respecting skip conditions)
   const activeQuestions = useMemo(() => {

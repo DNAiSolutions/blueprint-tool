@@ -444,6 +444,7 @@ export default function Canvas() {
           ) : (
             <QuestionPanel 
               sessionId={sessionId} 
+              industry={currentSession?.industry}
               onNodeCreate={handleNodeCreate}
             />
           )}
