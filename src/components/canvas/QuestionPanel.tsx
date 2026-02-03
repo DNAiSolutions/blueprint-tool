@@ -116,6 +116,22 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
         });
       }
 
+      // Handle single node with all selections (e.g., qualification criteria)
+      // This runs when createPerSelection is FALSE - creates ONE node with all criteria
+      if (currentQuestion.nodeCreation && !currentQuestion.nodeCreation.createPerSelection && onNodeCreate) {
+        const labels = multiSelectValue.map(value => {
+          const option = currentQuestion.options?.find(o => o.value === value);
+          return option?.label || value;
+        });
+        
+        onNodeCreate(currentQuestion.nodeCreation.type, {
+          label: `Qualification (${multiSelectValue.length} criteria)`,
+          criteria: multiSelectValue,
+          criteriaLabels: labels,
+          questionId: currentQuestion.id,
+        });
+      }
+
       // Check for leak detection - if "nothing" is selected in follow-up
       if (currentQuestion.id === 'q9' && multiSelectValue.includes('nothing')) {
         // Flag this as a leak point
