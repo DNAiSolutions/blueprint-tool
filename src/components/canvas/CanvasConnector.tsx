@@ -37,15 +37,19 @@ export function CanvasConnector({
     strokeWidth = 3;
   }
 
-  // Calculate midpoint for label
+  // Calculate midpoint for label - uses same dimensions as funnelLayout
   const getMidpoint = () => {
-    const fromX = fromNode.position.x + 80; // Half node width
-    const fromY = fromNode.position.y + 60;
-    const toX = toNode.position.x + 80;
-    const toY = toNode.position.y;
+    const nodeWidth = 175; // Match NODE_WIDTH from funnelLayout
+    const nodeHeight = 80; // Match NODE_HEIGHT from funnelLayout
+    
+    const fromCenterX = fromNode.position.x + nodeWidth / 2;
+    const fromBottomY = fromNode.position.y + nodeHeight;
+    const toCenterX = toNode.position.x + nodeWidth / 2;
+    const toTopY = toNode.position.y;
+    
     return {
-      x: (fromX + toX) / 2,
-      y: (fromY + toY) / 2,
+      x: (fromCenterX + toCenterX) / 2,
+      y: (fromBottomY + toTopY) / 2,
     };
   };
 

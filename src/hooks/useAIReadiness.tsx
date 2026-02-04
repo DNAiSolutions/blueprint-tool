@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { SessionNode, AIReadinessScore, AIReadinessStatus } from '@/types/session';
+import { QuestionAnswers } from '@/types/questions';
 
 // ============================================
 // AI READINESS ALGORITHM - Per PRD Spec
 // 5 Layers: Efficiency, Maturity, Blockers, Status, Recommendations
+// Now enhanced with question answer integration
 // ============================================
 
 export interface Blocker {
@@ -34,8 +36,9 @@ export interface AIReadinessResult extends AIReadinessScore {
   timelineToReadiness: string;
 }
 
-interface UseAIReadinessOptions {
+export interface UseAIReadinessOptions {
   avgDealValue?: number;
+  questionAnswers?: QuestionAnswers; // NEW: Question answers for richer insights
 }
 
 /**
@@ -141,8 +144,9 @@ function calculateMaturityScore(nodes: SessionNode[]): number {
 
 /**
  * Layer 3: Detect Blockers and Positive Indicators
+ * Enhanced with question answer analysis
  */
-function detectBlockers(nodes: SessionNode[]): Blocker[] {
+function detectBlockers(nodes: SessionNode[], questionAnswers?: QuestionAnswers): Blocker[] {
   const blockers: Blocker[] = [];
 
   // Check for undefined qualification criteria
@@ -165,13 +169,79 @@ function detectBlockers(nodes: SessionNode[]): Blocker[] {
     });
   }
 
-  // Check for no follow-up system
+  // NEW: Check response time from question answers (q8)
+  if (questionAnswers?.['q8']?.value) {
+    const responseTime = questionAnswers['q8'].value as string;
+    if (responseTime === 'same-day' || responseTime === 'next-day') {
+      blockers.push({
+        name: "Slow lead response time",
+        severity: 'critical',
+        impact: "Leads responding after 30 minutes have 21x lower contact rate",
+        fix: "Phase 0, Week 1 — Implement speed-to-lead automation",
+        timeline: "1 week"
+      });
+    } else if (responseTime === '30min-1hr') {
+      blockers.push({
+        name: "Response time needs improvement",
+        severity: 'secondary',
+        impact: "Leads are cooling while waiting for response",
+        fix: "Phase 1 — Add instant automated response + notification",
+        timeline: "1-2 weeks"
+      });
+    }
+  }
+
+  // NEW: Check follow-up system from question answers (q9)
+  if (questionAnswers?.['q9']?.value) {
+    const followUp = questionAnswers['q9'].value as string[];
+    if (Array.isArray(followUp) && followUp.includes('nothing')) {
+      blockers.push({
+        name: "No follow-up system",
+        severity: 'critical',
+        impact: "Leads who don't answer are permanently lost",
+        fix: "Phase 0, Week 1 — Build automated follow-up sequence",
+        timeline: "1 week"
+      });
+    }
+  }
+
+  // NEW: Check for bottleneck awareness from question answers (q3)
+  if (questionAnswers?.['q3']?.value) {
+    const bottlenecks = questionAnswers['q3'].value as string[];
+    if (Array.isArray(bottlenecks)) {
+      if (bottlenecks.includes('leads-dont-respond') || bottlenecks.includes('slow-response')) {
+        // They're aware of the problem - good for prioritizing
+        if (!blockers.some(b => b.name.includes('response'))) {
+          blockers.push({
+            name: "Lead responsiveness identified as bottleneck",
+            severity: 'secondary',
+            impact: "You've identified this as a problem area",
+            fix: "Phase 1 — Implement multi-channel follow-up automation",
+            timeline: "2 weeks"
+          });
+        }
+      }
+      if (bottlenecks.includes('no-follow-up')) {
+        if (!blockers.some(b => b.name.includes('follow-up'))) {
+          blockers.push({
+            name: "Follow-up identified as bottleneck",
+            severity: 'secondary',
+            impact: "Missing follow-up is losing deals",
+            fix: "Phase 1 — Build automated follow-up sequences",
+            timeline: "2 weeks"
+          });
+        }
+      }
+    }
+  }
+
+  // Check for no follow-up system from nodes
   const intakeNodes = nodes.filter(n => n.type === 'intake');
   const conversionRate = intakeNodes.length > 0 
     ? intakeNodes.reduce((sum, n) => sum + n.conversionRate, 0) / intakeNodes.length
     : 0;
   
-  if (intakeNodes.length > 0 && conversionRate < 30) {
+  if (intakeNodes.length > 0 && conversionRate < 30 && !blockers.some(b => b.name.includes('follow-up'))) {
     blockers.push({
       name: "Low lead follow-up rate",
       severity: 'critical',
@@ -200,6 +270,20 @@ function detectBlockers(nodes: SessionNode[]): Blocker[] {
     }
   }
 
+  // NEW: Check close rate from question answers (q15)
+  if (questionAnswers?.['q15']?.value) {
+    const closeRate = Number(questionAnswers['q15'].value);
+    if (!isNaN(closeRate) && closeRate < 25) {
+      blockers.push({
+        name: "Weak sales close rate",
+        severity: 'secondary',
+        impact: `Only ${closeRate}% of appointments convert to sales`,
+        fix: "Phase 1 — Sales process optimization and training",
+        timeline: "4 weeks"
+      });
+    }
+  }
+
   // Secondary blockers
   const totalVolume = nodes.reduce((sum, n) => sum + n.volume, 0);
   const closeNodes = nodes.filter(n => n.type === 'close');
@@ -207,7 +291,7 @@ function detectBlockers(nodes: SessionNode[]): Blocker[] {
   
   if (totalVolume > 0 && closeVolume > 0) {
     const overallConversion = (closeVolume / nodes[0]?.volume || 1) * 100;
-    if (overallConversion < 10) {
+    if (overallConversion < 10 && !blockers.some(b => b.name.includes('conversion'))) {
       blockers.push({
         name: "Low overall conversion rate",
         severity: 'secondary',
@@ -231,10 +315,21 @@ function detectBlockers(nodes: SessionNode[]): Blocker[] {
     });
   }
 
+  // NEW: Check if no reviews/referrals system (q17)
+  if (questionAnswers?.['q17']?.value === false) {
+    blockers.push({
+      name: "No review/referral system",
+      severity: 'secondary',
+      impact: "Missing word-of-mouth growth opportunity",
+      fix: "Phase 1 — Implement automated review/referral asks",
+      timeline: "1 week"
+    });
+  }
+
   return blockers;
 }
 
-function detectPositives(nodes: SessionNode[]): PositiveIndicator[] {
+function detectPositives(nodes: SessionNode[], questionAnswers?: QuestionAnswers): PositiveIndicator[] {
   const positives: PositiveIndicator[] = [];
 
   // Clear close process
@@ -244,6 +339,28 @@ function detectPositives(nodes: SessionNode[]): PositiveIndicator[] {
       name: "Strong close process",
       message: "Your sales team has a great close rate. AI can learn from this pattern."
     });
+  }
+
+  // NEW: Fast response time from answers
+  if (questionAnswers?.['q8']?.value) {
+    const responseTime = questionAnswers['q8'].value as string;
+    if (responseTime === 'under-1min' || responseTime === '1-5min') {
+      positives.push({
+        name: "Speed-to-lead champion",
+        message: "Your fast response time is a major competitive advantage!"
+      });
+    }
+  }
+
+  // NEW: Automated follow-up from answers
+  if (questionAnswers?.['q9']?.value) {
+    const followUp = questionAnswers['q9'].value as string[];
+    if (Array.isArray(followUp) && followUp.includes('automated-sequence')) {
+      positives.push({
+        name: "Automated follow-up in place",
+        message: "You already have automated sequences - AI will enhance them."
+      });
+    }
   }
 
   // Defined lead sources
@@ -270,6 +387,25 @@ function detectPositives(nodes: SessionNode[]): PositiveIndicator[] {
     positives.push({
       name: "Multiple intake channels",
       message: "You cover multiple ways prospects can reach you. Good for automation."
+    });
+  }
+
+  // NEW: High close rate from answers
+  if (questionAnswers?.['q15']?.value) {
+    const closeRate = Number(questionAnswers['q15'].value);
+    if (!isNaN(closeRate) && closeRate >= 60) {
+      positives.push({
+        name: "Excellent close rate",
+        message: `${closeRate}% close rate is outstanding. AI can help you get more at-bats.`
+      });
+    }
+  }
+
+  // NEW: Active review system
+  if (questionAnswers?.['q17']?.value === true) {
+    positives.push({
+      name: "Review system in place",
+      message: "Asking for reviews closes the loop and builds social proof."
     });
   }
 
@@ -408,13 +544,13 @@ function generateReasoning(
 }
 
 /**
- * Main Hook: Calculate AI Readiness from Session Nodes
+ * Main Hook: Calculate AI Readiness from Session Nodes and Question Answers
  */
 export function useAIReadiness(
   nodes: SessionNode[],
   options: UseAIReadinessOptions = {}
 ): AIReadinessResult {
-  const { avgDealValue = 5000 } = options;
+  const { avgDealValue = 5000, questionAnswers } = options;
 
   return useMemo(() => {
     if (!nodes || nodes.length === 0) {
@@ -437,9 +573,9 @@ export function useAIReadiness(
     // Layer 2: Maturity Score
     const maturityScore = calculateMaturityScore(nodes);
 
-    // Layer 3: Blockers & Positives
-    const blockers = detectBlockers(nodes);
-    const positives = detectPositives(nodes);
+    // Layer 3: Blockers & Positives (now with question answers)
+    const blockers = detectBlockers(nodes, questionAnswers);
+    const positives = detectPositives(nodes, questionAnswers);
 
     // Layer 4: Overall Score & Status
     const { score, status } = calculateReadiness(efficiencyScore, maturityScore, blockers);
@@ -466,5 +602,5 @@ export function useAIReadiness(
       recommendations,
       timelineToReadiness,
     };
-  }, [nodes, avgDealValue]);
+  }, [nodes, avgDealValue, questionAnswers]);
 }

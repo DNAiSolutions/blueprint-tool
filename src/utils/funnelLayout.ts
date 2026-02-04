@@ -60,19 +60,20 @@ export const FUNNEL_LEVEL_LABELS: Record<number, string> = {
   7: 'Fulfillment & Reviews',
 };
 
-// Canvas dimensions - increased for better spacing
+// Canvas dimensions - improved for better spacing and alignment
 const CANVAS_CENTER_X = 800; // Wider center for more horizontal spread
 const MAX_FUNNEL_WIDTH = 1600; // Wider funnel
 const MIN_FUNNEL_WIDTH = 400;
-const NODE_WIDTH = 180;
-const NODE_GAP = 56; // More generous horizontal gap
+const NODE_WIDTH = 175; // Actual node width (matches CSS max-w-[200px] with padding)
+const NODE_HEIGHT = 80; // Approximate node height for connector calculations
+const NODE_GAP = 48; // Horizontal gap between nodes
 
 /**
  * Calculate the width available at each funnel level
- * Level 0 is widest, Level 5 is narrowest
+ * Level 0 is widest, Level 7 is narrowest
  */
 export function calculateLevelWidth(level: number): number {
-  const reductionPerLevel = (MAX_FUNNEL_WIDTH - MIN_FUNNEL_WIDTH) / 5;
+  const reductionPerLevel = (MAX_FUNNEL_WIDTH - MIN_FUNNEL_WIDTH) / 7;
   return MAX_FUNNEL_WIDTH - (level * reductionPerLevel);
 }
 
@@ -154,20 +155,43 @@ export function getLevelYPosition(level: number): number {
 /**
  * Calculate connector path between two nodes
  * Uses bezier curves for smooth connections
+ * Improved to handle various node positions accurately
  */
 export function calculateConnectorPath(
   fromNode: SessionNode,
   toNode: SessionNode
 ): string {
-  const fromX = fromNode.position.x + NODE_WIDTH / 2;
-  const fromY = fromNode.position.y + 60; // Bottom of node
-  const toX = toNode.position.x + NODE_WIDTH / 2;
-  const toY = toNode.position.y; // Top of node
+  // Use actual node dimensions for accurate center calculation
+  const nodeWidth = NODE_WIDTH;
+  const nodeHeight = NODE_HEIGHT;
   
-  // Calculate control points for bezier curve
-  const midY = (fromY + toY) / 2;
+  // Calculate center points of nodes
+  const fromCenterX = fromNode.position.x + nodeWidth / 2;
+  const fromBottomY = fromNode.position.y + nodeHeight; // Bottom edge of from node
+  const toCenterX = toNode.position.x + nodeWidth / 2;
+  const toTopY = toNode.position.y; // Top edge of to node
   
-  return `M ${fromX} ${fromY} C ${fromX} ${midY}, ${toX} ${midY}, ${toX} ${toY}`;
+  // Calculate vertical distance
+  const verticalDist = toTopY - fromBottomY;
+  
+  // For same-level or upward connections, use a different curve approach
+  if (verticalDist <= 0) {
+    // Horizontal or upward connection - use side-to-side path
+    const fromRightX = fromNode.position.x + nodeWidth;
+    const fromCenterY = fromNode.position.y + nodeHeight / 2;
+    const toLeftX = toNode.position.x;
+    const toCenterY = toNode.position.y + nodeHeight / 2;
+    
+    const midX = (fromRightX + toLeftX) / 2;
+    
+    return `M ${fromRightX} ${fromCenterY} C ${midX} ${fromCenterY}, ${midX} ${toCenterY}, ${toLeftX} ${toCenterY}`;
+  }
+  
+  // Standard top-to-bottom connection with smooth bezier curve
+  // Control point distance scales with vertical distance for natural curves
+  const controlPointOffset = Math.min(verticalDist * 0.5, 100);
+  
+  return `M ${fromCenterX} ${fromBottomY} C ${fromCenterX} ${fromBottomY + controlPointOffset}, ${toCenterX} ${toTopY - controlPointOffset}, ${toCenterX} ${toTopY}`;
 }
 
 /**
