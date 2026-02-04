@@ -1,393 +1,336 @@
-# ALIGN Automation Builder - Implementation Plan
 
-## Current Phase: Canvas & Question Engine Enhancements
 
-### Overview
-This plan addresses three critical improvements:
-1. **Zoom Alignment Stability** - Fix zoom so nodes/connectors stay aligned at any zoom level
-2. **Sidebar Label Accuracy** - Correct funnel level names to reflect actual stages
-3. **AI-Driven Dynamic Questions** - Implement intelligent question flow for fulfillment mapping
+# Implementation Plan: Enhanced Canvas Visuals, AI-Powered Questions & Full Integration
 
----
+## Overview
 
-## Task 1: Zoom Alignment Stability
-
-### Problem
-Current `transform: scale()` with `transform-origin: top left` causes content to drift during zoom. Nodes and connectors become misaligned.
-
-### Solution
-Switch to center-based viewport scaling with proper offset calculations.
-
-### Implementation Steps
-
-#### 1.1 Create `useCanvasViewport` Hook (NEW FILE)
-**File:** `src/hooks/useCanvasViewport.tsx`
-
-```typescript
-interface ViewportState {
-  zoom: number;           // 0.25 to 2.0
-  offset: { x: number; y: number };  // pan offset
-}
-
-// Exports:
-// - zoom, offset state
-// - zoomIn(), zoomOut(), resetView(), fitToContent(nodes)
-// - handleWheel(e) - zoom toward cursor
-// - handlePanStart/Move/End - background drag
-// - screenToCanvas(point) - convert screen coords to canvas coords
-// - canvasToScreen(point) - convert canvas coords to screen coords
-```
-
-#### 1.2 Refactor Canvas Zoom Logic
-**File:** `src/pages/Canvas.tsx`
-
-- [ ] Replace inline zoom/pan state with `useCanvasViewport` hook
-- [ ] Update transform: `transform: scale(${zoom}) translate(${offset.x}px, ${offset.y}px)`
-- [ ] Use `transform-origin: center center` for stable scaling
-- [ ] Update wheel handler to zoom toward cursor position
-- [ ] Add smooth CSS transitions: `transition: transform 0.1s ease-out`
-
-#### 1.3 Update Zoom Controls UI
-- [ ] Display zoom percentage (e.g., "100%")
-- [ ] Add "Fit to Content" button - auto-zoom to show all nodes
-- [ ] Add "Reset View" button (100% zoom, centered)
-- [ ] Keyboard shortcuts: Ctrl+0 = reset, Ctrl+= zoom in, Ctrl+- zoom out
-
-#### 1.4 Verify Connector Paths
-**File:** `src/components/canvas/CanvasConnector.tsx`
-
-- [ ] Ensure paths are calculated in canvas space (scale-independent)
-- [ ] Connectors inherit parent transform, no manual scaling needed
-
-### Success Criteria
-- [ ] Zooming keeps viewport center stable
-- [ ] Connectors scale correctly with nodes
-- [ ] Zoom controls show current percentage
-- [ ] "Fit to Content" shows all nodes in view
+This plan addresses the visual issues seen in the screenshot (misaligned connectors, scattered nodes) and implements a fully integrated AI-driven question engine with suggested answers throughout the discovery flow. The goal is to create a seamless experience where:
+- Nodes and connectors align properly at any zoom level
+- Every question offers contextual suggestions (multi-select checkboxes)
+- AI generates dynamic fulfillment questions that chain ("What happens next?")
+- The AI Readiness panel uses all collected data for real-time analysis
+- Users can manually connect nodes with arrows
 
 ---
 
-## Task 2: Sidebar Label Accuracy
+## Phase 1: Fix Visual Issues (Nodes & Connectors)
 
-### Problem
-`FUNNEL_LEVELS` in `funnelLayout.ts` duplicates "conversion" for levels 3, 4, 5. Sidebar shows wrong stage names.
+### 1.1 Fix Connector Path Calculation
 
-### Solution
-Update level names to reflect the actual 8-level funnel structure.
+**Problem**: The screenshot shows connectors curving strangely and not connecting properly between nodes.
 
-### Implementation Steps
+**Root Cause**: The `calculateConnectorPath` function in `funnelLayout.ts` uses fixed offsets (`NODE_WIDTH / 2` = 90px) that don't match actual node dimensions, causing misalignment.
 
-#### 2.1 Update Funnel Level Definitions
-**File:** `src/utils/funnelLayout.ts`
+**Solution**:
+- Update `calculateConnectorPath` to accept actual node dimensions
+- Improve Bezier curve control points for smoother, more natural curves
+- Add horizontal offset handling when nodes are at the same vertical level
 
-Current → Fixed:
-| Level | Current Name | New Name |
-|-------|--------------|----------|
-| 0 | top-of-funnel | lead-sources |
-| 1 | intake | intake |
-| 2 | qualification | qualification |
-| 3 | conversion | qualified-paths |
-| 4 | conversion | handoffs |
-| 5 | conversion | conversion-events |
-| 6 | close | close |
-| 7 | fulfillment | fulfillment |
+**File**: `src/utils/funnelLayout.ts`
+- Fix `NODE_WIDTH` constant to match actual node width (150-200px)
+- Update control point calculation for better curve aesthetics
+- Handle edge cases (same-level connections, diagonal connections)
 
-#### 2.2 Update `getLevelName()` Function
-```typescript
-export function getLevelName(level: number): string {
-  const names: Record<number, string> = {
-    0: 'Lead Sources',
-    1: 'Lead Intake',
-    2: 'Qualification',
-    3: 'Qualified Paths',
-    4: 'Handoffs',
-    5: 'Conversion Events',
-    6: 'Close',
-    7: 'Fulfillment & Reviews',
-  };
-  return names[level] || 'Custom';
-}
-```
+### 1.2 Improve Node Positioning
 
-### Success Criteria
-- [ ] Each funnel level has a unique, descriptive name
-- [ ] Sidebar reflects actual workflow stages
-- [ ] No duplicate labels in UI
+**Problem**: Nodes are scattered and not properly centered.
+
+**Solution**:
+- Ensure consistent horizontal spacing in `positionNodesAtLevel`
+- Add minimum spacing constraints to prevent overlap
+- Improve the centering algorithm for odd/even node counts
+
+**File**: `src/utils/funnelLayout.ts`
+- Update `NODE_WIDTH` to 180 (matching CSS)
+- Add collision detection for overlapping nodes
+
+### 1.3 Fix Zoom/Pan Alignment
+
+**Solution**: Ensure connector SVG scales with the same transform as nodes.
+
+**File**: `src/pages/Canvas.tsx`
+- Verify SVG connectors use the same viewport transform as node container
+- Ensure pointer events work correctly at all zoom levels
 
 ---
 
-## Task 3: AI-Driven Dynamic Questions for Fulfillment
+## Phase 2: AI-Driven Suggestions for ALL Questions
 
-### Problem
-Current question flow is static. Fulfillment requires context-aware follow-up questions based on what the business actually does after closing a sale.
+### 2.1 Convert Text Questions to Multi-Select with Suggestions
 
-### Solution
-Implement a hybrid system:
-- **Rule-based core flow** for standard funnel stages
-- **AI-generated questions** for fulfillment stage based on previous answers
+**Current State**: Many questions are `type: 'text'` requiring free-form input.
 
-### Architecture
+**New Behavior**: Transform key questions to `multi-select` with AI-suggested options based on:
+- Industry type
+- Previous answers
+- Best practices from the knowledge base
 
+**Questions to Convert**:
+
+| Question ID | Current | New Type | Suggested Options Source |
+|-------------|---------|----------|-------------------------|
+| `q1` (Growth Goal) | text | multi-select | Industry-specific growth options |
+| `q3` (Bottleneck) | text | multi-select | Common bottleneck patterns |
+| `q_conversion_type` | text | multi-select | Industry conversion events |
+| `q16` (Fulfillment) | text | multi-select | Industry fulfillment steps |
+
+**File**: `src/types/questions.ts`
+- Add new option arrays for each question
+- Add industry-aware option selection
+
+### 2.2 Create Comprehensive Suggestion Options
+
+**New File**: `src/types/suggestionOptions.ts`
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Question Engine                          │
-├─────────────────────────────────────────────────────────────┤
-│  Static Questions (existing QUESTIONS array)                │
-│  ├─ Goals & Context                                         │
-│  ├─ Lead Sources                                            │
-│  ├─ Lead Handling                                           │
-│  ├─ Qualification                                           │
-│  ├─ Conversion Events                                       │
-│  └─ Close                                                   │
-├─────────────────────────────────────────────────────────────┤
-│  AI Injection Point (after Close stage)                     │
-│  ├─ Trigger: User completes close-related questions         │
-│  ├─ Input: Industry + all previous answers + existing nodes │
-│  ├─ AI Prompt: "What happens after the sale closes?"        │
-│  └─ Output: 2-4 contextual fulfillment questions            │
-├─────────────────────────────────────────────────────────────┤
-│  Dynamic Question Injection                                  │
-│  └─ injectDynamicQuestions() adds AI questions to flow      │
-└─────────────────────────────────────────────────────────────┘
-```
+GROWTH_GOAL_OPTIONS = [
+  { value: 'revenue', label: 'Increase Revenue', category: 'Financial' },
+  { value: 'clients', label: 'More Clients', category: 'Growth' },
+  { value: 'capacity', label: 'Build Capacity', category: 'Operations' },
+  { value: 'efficiency', label: 'Improve Efficiency', category: 'Operations' },
+  { value: 'profit-margin', label: 'Better Profit Margins', category: 'Financial' },
+  // ... more options
+]
 
-### Implementation Steps
-
-#### 3.1 Create Edge Function for AI Question Generation
-**File:** `supabase/functions/generate-questions/index.ts`
-
-**Endpoint:** POST `/generate-questions`
-
-**Request:**
-```typescript
-{
-  industry: string;
-  currentStage: 'fulfillment' | 'review' | 'custom';
-  previousAnswers: Record<string, { value: any }>;
-  existingNodes: { type: string; label: string }[];
-}
+BOTTLENECK_OPTIONS = [
+  { value: 'not-enough-leads', label: 'Not Enough Leads', category: 'Top of Funnel' },
+  { value: 'leads-dont-respond', label: 'Leads Don\'t Respond', category: 'Lead Handling' },
+  { value: 'low-close-rate', label: 'Low Close Rate', category: 'Sales' },
+  { value: 'no-shows', label: 'Appointments Don\'t Show Up', category: 'Conversion' },
+  { value: 'fulfillment-delays', label: 'Fulfillment Takes Too Long', category: 'Operations' },
+  // ... more options
+]
 ```
 
-**Response:**
-```typescript
-{
-  questions: Array<{
-    id: string;          // e.g., "ai_fulfill_1"
-    question: string;
-    type: 'text' | 'select' | 'multi-select' | 'number';
-    options?: string[];
-    section: 'fulfillment';
-    hint?: string;
-    followUpNodeType?: NodeType;
-  }>;
-}
+### 2.3 Update Question Panel UI
+
+**File**: `src/components/canvas/QuestionPanel.tsx`
+- Ensure all questions render with `MultiSelectCheckbox` when applicable
+- Add "Other" option that shows text input for custom answers
+- Improve the visual hierarchy of selected options
+
+---
+
+## Phase 3: Dynamic AI-Powered Fulfillment Questions
+
+### 3.1 Enhanced Fulfillment Question Chain
+
+**Behavior**: After each fulfillment answer, AI generates the next logical question asking "What happens next?" until the user indicates completion.
+
+**New Hook**: Update `useAIQuestions.tsx`
+- Add `generateNextFulfillmentQuestion(lastAnswer: string)` method
+- Track fulfillment chain depth
+- Generate options based on last step
+
+### 3.2 Update Edge Function for Chained Questions
+
+**File**: `supabase/functions/generate-questions/index.ts`
+- Accept `chainMode: true` flag for sequential generation
+- Accept `lastFulfillmentStep` parameter
+- Return single next question with contextual options
+
+**Enhanced Prompt**:
+```
+"The business just described this fulfillment step: {lastStep}.
+Generate ONE follow-up question asking what happens IMMEDIATELY AFTER this step.
+Include 4-6 suggested options for common next steps in {industry}.
+Include an option for 'This is the final step' to end the chain."
 ```
 
-**AI Prompt Template:**
+### 3.3 Add "Mark Fulfillment Complete" Button
+
+**File**: `src/components/canvas/QuestionPanel.tsx`
+- Add a prominent button: "That's the last fulfillment step"
+- When clicked, advances to Reviews/Referrals section
+- Creates a "Fulfillment Complete" node marker
+
+---
+
+## Phase 4: AI Readiness Integration
+
+### 4.1 Pass All Question Answers to AI Readiness Algorithm
+
+**Current State**: `useAIReadiness` only analyzes nodes, not raw question answers.
+
+**Enhancement**: Feed question answers into the readiness calculation for richer insights.
+
+**File**: `src/hooks/useAIReadiness.tsx`
+- Accept optional `questionAnswers: QuestionAnswers` parameter
+- Extract relevant data:
+  - Response time (q8) → impacts efficiency score
+  - Follow-up method (q9) → impacts maturity score
+  - Qualification criteria (q11) → impacts decision clarity
+
+### 4.2 Real-Time Blocker Detection from Answers
+
+Add new blocker detection based on answers:
+
+| Answer Pattern | Blocker Generated |
+|----------------|-------------------|
+| Response time > 30min | "Slow lead response" (critical) |
+| Follow-up = "nothing" | "No follow-up system" (critical) |
+| Close rate < 25% | "Weak sales process" (secondary) |
+| No qualification criteria | "Undefined qualification" (critical) |
+
+### 4.3 Dynamic Recommendations
+
+Update `generateRecommendations` to include specific action items based on the exact answers:
+
 ```
-You are helping map a {industry} business's fulfillment process.
-
-The business has this workflow so far:
-- Lead sources: {leadSources}
-- Intake methods: {intakeMethods}
-- Qualification criteria: {qualificationCriteria}
-- Close process: {closeProcess}
-
-Generate 2-4 questions to understand what happens AFTER the sale closes.
-Focus on:
-1. Delivery/fulfillment steps (who does what, in what order)
-2. Handoffs between people/systems
-3. Customer communication touchpoints
-4. Quality checks or follow-up procedures
-
-Return JSON array of questions. Each question should have:
-- id: unique string starting with "ai_fulfill_"
-- question: the question text
-- type: "text", "select", "multi-select", or "number"
-- options: array of choices (for select/multi-select)
-- hint: optional helper text
-- followUpNodeType: suggested node type for canvas
-```
-
-#### 3.2 Create `useAIQuestions` Hook
-**File:** `src/hooks/useAIQuestions.tsx`
-
-```typescript
-export function useAIQuestions() {
-  // State
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  // Generate questions for fulfillment stage
-  const generateFulfillmentQuestions = async (context: AIQuestionContext) => {
-    // Call edge function
-    // Cache results by session
-    // Return questions
-  };
-
-  // Check if we should trigger AI generation
-  const shouldGenerateAI = (currentQuestionId: string, answers: QuestionAnswers) => {
-    // Return true when user completes close-stage questions
-  };
-
-  return {
-    isGenerating,
-    generatedQuestions,
-    error,
-    generateFulfillmentQuestions,
-    shouldGenerateAI,
-  };
-}
+If response_time === 'next-day':
+  Add: "Phase 0, Week 1: Implement speed-to-lead automation"
+  
+If follow_up.includes('nothing'):
+  Add: "Phase 0, Week 1: Build automated follow-up sequence"
 ```
 
-#### 3.3 Update Question Types
-**File:** `src/types/questions.ts`
+---
 
-Add to `Question` interface:
-```typescript
-interface Question {
-  id: string;
-  section: QuestionSection;
-  question: string;
-  type: 'text' | 'select' | 'multi-select' | 'number' | 'boolean';
-  options?: string[];
-  required?: boolean;
-  hint?: string;
-  skipCondition?: (answers: QuestionAnswers) => boolean;
-  optionKey?: keyof IndustryOptions;
-  isAIGenerated?: boolean;
-  aiContext?: string;
-}
+## Phase 5: Manual Arrow Connections
+
+### 5.1 Verify Connect Mode Works Correctly
+
+**Current State**: Connect Mode exists but may have issues based on user feedback.
+
+**File**: `src/pages/Canvas.tsx`
+- Add visual feedback when Connect Mode is active (glowing nodes, "click to connect" hint)
+- Ensure connections persist correctly in state
+- Add animation when connection is created
+
+### 5.2 Improve Connection Feedback
+
+**Enhancements**:
+- Highlight valid target nodes when dragging/connecting
+- Show temporary connection line while selecting target
+- Toast confirmation with undo option after connection
+
+### 5.3 Add Connection Controls to Node Context Menu
+
+**File**: `src/pages/Canvas.tsx`
+- Add "Connect From This Node" context menu option
+- Add "Show Connections" to highlight all connected nodes
+- Add "Disconnect All" option
+
+---
+
+## Phase 6: Fulfillment → Review Transition
+
+### 6.1 Add Transition Logic
+
+When user clicks "Fulfillment Complete":
+1. Add a "Fulfillment Complete" node (visual marker)
+2. Auto-generate Review/Referral questions
+3. Advance question flow to Reviews section
+
+### 6.2 Review/Referral Questions
+
+Add questions for reviews/referrals phase:
+```
+- "How do you currently ask for reviews?"
+- "Do you have a referral program?"
+- "What % of clients leave reviews?"
+- "What % of business comes from referrals?"
 ```
 
-#### 3.4 Integrate with Question Flow
-**File:** `src/hooks/useQuestionFlow.tsx`
+---
 
-- [ ] Import and use `useAIQuestions` hook
-- [ ] After close-stage questions complete, call `generateFulfillmentQuestions()`
-- [ ] Inject generated questions via `injectDynamicQuestions()`
-- [ ] Show loading state while AI generates
+## Technical Implementation Details
 
-#### 3.5 Update Question Panel UI
-**File:** `src/components/canvas/QuestionPanel.tsx`
+### Files to Create
 
-- [ ] Show "Analyzing your workflow..." loading state during AI generation
-- [ ] Style AI-generated questions with subtle indicator (sparkle icon)
-- [ ] Add "Generate more questions" button for manual AI trigger
-- [ ] Graceful error handling if AI fails
+| File | Purpose |
+|------|---------|
+| `src/types/suggestionOptions.ts` | Centralized suggestion options for all questions |
 
-#### 3.6 Update Config
-**File:** `supabase/config.toml`
+### Files to Modify
 
-```toml
-[functions.generate-questions]
-verify_jwt = false
+| File | Changes |
+|------|---------|
+| `src/utils/funnelLayout.ts` | Fix connector path calculation, node centering |
+| `src/types/questions.ts` | Convert text questions to multi-select, add options |
+| `src/components/canvas/QuestionPanel.tsx` | Add "Complete Fulfillment" button, improve multi-select rendering |
+| `src/hooks/useAIQuestions.tsx` | Add chain mode for sequential fulfillment questions |
+| `src/hooks/useAIReadiness.tsx` | Accept question answers, add answer-based blockers |
+| `supabase/functions/generate-questions/index.ts` | Add chain mode, improve prompt for contextual options |
+| `src/pages/Canvas.tsx` | Improve Connect Mode visuals, verify connection logic |
+| `src/components/canvas/CanvasConnector.tsx` | Improve visual styling of connector lines |
+
+### Data Flow
+
+```text
+User answers question
+         ↓
+┌─────────────────────────────────────────────────────────┐
+│  QuestionPanel                                          │
+│  - Shows multi-select with suggested options            │
+│  - Tracks answer in useQuestionFlow                     │
+└─────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────┐
+│  useQuestionFlow                                        │
+│  - Stores answer                                        │
+│  - Triggers node creation if applicable                 │
+│  - Advances to next question                            │
+└─────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────┐
+│  Canvas.tsx (handleNodeCreate)                          │
+│  - Creates/updates nodes based on answers               │
+│  - Positions nodes in funnel layout                     │
+└─────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────┐
+│  useAIReadiness                                         │
+│  - Receives nodes + question answers                    │
+│  - Calculates efficiency & maturity scores              │
+│  - Detects blockers from both sources                   │
+│  - Generates phase recommendations                      │
+└─────────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────────┐
+│  AIReadinessPanel                                       │
+│  - Displays real-time readiness status                  │
+│  - Shows blockers and recommendations                   │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Fallback Behavior
-If AI generation fails:
-1. Show error toast
-2. Fall back to generic fulfillment questions:
-   - "What happens immediately after the sale closes?"
-   - "Who is responsible for delivering the service?"
-   - "How do you communicate with the customer post-sale?"
-   - "Do you have a formal handoff process?"
+### Fulfillment Chain Flow
 
-### Success Criteria
-- [ ] After close questions, AI generates 2-4 contextual fulfillment questions
-- [ ] Questions are relevant to the industry and previous answers
-- [ ] Loading state shows while AI generates
-- [ ] Graceful fallback if AI fails
-- [ ] Generated questions integrate into normal flow
+```text
+User answers "What happens after closing?"
+         ↓
+"We schedule the job"
+         ↓
+AI generates: "What happens after scheduling?"
+  Options: [Send confirmation, Assign technician, Order materials, ...]
+         ↓
+User selects: "Assign technician"
+         ↓
+AI generates: "What happens after assigning the tech?"
+  Options: [Tech contacts customer, Pre-job checklist, Day-of reminder, ...]
+         ↓
+User clicks: "That's the final step"
+         ↓
+System advances to: Reviews & Referrals section
+```
+
+---
+
+## Success Criteria
+
+1. **Visual**: Nodes align properly and connectors curve smoothly at all zoom levels
+2. **Suggestions**: Every question shows relevant multi-select options
+3. **AI Chain**: Fulfillment questions dynamically build on each other
+4. **Integration**: AI Readiness panel updates in real-time with all data
+5. **Control**: Users can mark fulfillment complete and manually connect nodes
 
 ---
 
 ## Implementation Order
 
-### Phase 1: Quick Wins (Do First)
-1. **Task 2: Sidebar Labels** - 15 min, improves clarity immediately
-2. **Task 1: Zoom Alignment** - 1-2 hours, critical for usability
+1. **Phase 1** - Fix visuals (immediate user pain point)
+2. **Phase 2** - Add suggestions to all questions (improves UX)
+3. **Phase 3** - Implement fulfillment chaining (core differentiator)
+4. **Phase 4** - Integrate AI Readiness (connects everything)
+5. **Phase 5** - Polish manual connections (user requested)
+6. **Phase 6** - Add fulfillment → review transition (completes flow)
 
-### Phase 2: Intelligence (Do Second)
-3. **Task 3: AI Questions** - 2-3 hours, requires edge function + hook + UI
-
----
-
-## Files Summary
-
-### New Files
-- `src/hooks/useCanvasViewport.tsx` - Viewport zoom/pan state management
-- `src/hooks/useAIQuestions.tsx` - AI question generation hook
-- `supabase/functions/generate-questions/index.ts` - AI question edge function
-
-### Modified Files
-- `src/utils/funnelLayout.ts` - Fix level names
-- `src/pages/Canvas.tsx` - Use viewport hook, update zoom UI
-- `src/types/questions.ts` - Add `isAIGenerated` field
-- `src/hooks/useQuestionFlow.tsx` - Integrate AI questions
-- `src/components/canvas/QuestionPanel.tsx` - Loading states, AI indicators
-- `supabase/config.toml` - Register new function
-
----
-
-## Technical Notes
-
-### Zoom Math (Center-Based)
-```typescript
-// Zoom toward cursor position
-const zoomToPoint = (
-  cursorPos: { x: number; y: number },
-  newZoom: number,
-  currentZoom: number,
-  currentOffset: { x: number; y: number }
-) => {
-  const zoomRatio = newZoom / currentZoom;
-  return {
-    x: cursorPos.x - (cursorPos.x - currentOffset.x) * zoomRatio,
-    y: cursorPos.y - (cursorPos.y - currentOffset.y) * zoomRatio,
-  };
-};
-```
-
-### Coordinate Conversion
-```typescript
-// Screen coords → Canvas coords (for drag-drop, connections)
-const screenToCanvas = (screenX: number, screenY: number) => ({
-  x: (screenX - offset.x) / zoom,
-  y: (screenY - offset.y) / zoom,
-});
-
-// Canvas coords → Screen coords (for rendering)
-const canvasToScreen = (canvasX: number, canvasY: number) => ({
-  x: canvasX * zoom + offset.x,
-  y: canvasY * zoom + offset.y,
-});
-```
-
----
-
-## Status Tracking
-
-- [x] Task 1: Zoom Alignment - COMPLETE ✅
-- [x] Task 2: Sidebar Labels - COMPLETE ✅
-- [x] Task 3: AI Dynamic Questions - COMPLETE ✅
-
----
-
-## Previous Plan (Completed)
-<details>
-<summary>Click to expand previous plan</summary>
-
-### Completed Tasks
-- ✅ Dynamic mapping questions for lead sources
-- ✅ Connection accuracy (functional updateNode)
-- ✅ Connect mode toggle for manual connections
-- ✅ Qualification fan-out pattern
-- ✅ Canvas navigation (zoom, pan)
-
-</details>
-
----
-
-Last Updated: 2026-02-04
