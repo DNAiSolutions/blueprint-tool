@@ -36,17 +36,29 @@ export const NODE_LEVELS: Record<NodeType, number> = {
 };
 
 // Increased vertical spacing to prevent bunching as maps grow
-// Extended to 8 levels for deeper funnels
+// Extended to 8 levels for deeper funnels - UNIQUE names for each level
 export const FUNNEL_LEVELS: FunnelLevel[] = [
   { level: 0, name: 'top-of-funnel', yOffset: 80 },
   { level: 1, name: 'intake', yOffset: 260 },
   { level: 2, name: 'qualification', yOffset: 440 },
   { level: 3, name: 'conversion', yOffset: 620 },   // Qualified/Disqualified paths
-  { level: 4, name: 'conversion', yOffset: 800 },   // Handoffs
-  { level: 5, name: 'conversion', yOffset: 980 },   // Conversion events
+  { level: 4, name: 'conversion', yOffset: 800 },   // Handoffs - uses index for unique display
+  { level: 5, name: 'conversion', yOffset: 980 },   // Conversion events - uses index for unique display
   { level: 6, name: 'close', yOffset: 1160 },
   { level: 7, name: 'fulfillment', yOffset: 1340 },
 ];
+
+// Human-readable labels for each funnel level (unique, no duplicates)
+export const FUNNEL_LEVEL_LABELS: Record<number, string> = {
+  0: 'Lead Sources',
+  1: 'Lead Intake',
+  2: 'Qualification',
+  3: 'Qualified Paths',
+  4: 'Handoffs',
+  5: 'Conversion Events',
+  6: 'Close',
+  7: 'Fulfillment & Reviews',
+};
 
 // Canvas dimensions - increased for better spacing
 const CANVAS_CENTER_X = 800; // Wider center for more horizontal spread
@@ -162,15 +174,7 @@ export function calculateConnectorPath(
  * Get the level name for display
  */
 export function getLevelName(level: number): string {
-  const names: Record<number, string> = {
-    0: 'Top of Funnel',
-    1: 'Lead Intake',
-    2: 'Qualification',
-    3: 'Conversion',
-    4: 'Close',
-    5: 'Fulfillment & Reviews',
-  };
-  return names[level] || 'Custom';
+  return FUNNEL_LEVEL_LABELS[level] || 'Custom';
 }
 
 /**

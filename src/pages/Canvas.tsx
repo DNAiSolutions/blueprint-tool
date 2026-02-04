@@ -43,8 +43,10 @@ import {
   calculateFunnelPositions, 
   NODE_LEVELS, 
   FUNNEL_LEVELS,
+  FUNNEL_LEVEL_LABELS,
   getCanvasCenterX,
 } from '@/utils/funnelLayout';
+import { useCanvasViewport } from '@/hooks/useCanvasViewport';
 import { toast } from 'sonner';
 
 // Auto-save interval in milliseconds
@@ -56,13 +58,27 @@ export default function Canvas() {
   const { currentSession, loadSession, addNode, updateNode, deleteNode, duplicateNode, isSessionReady } = useSession();
   const { user } = useAuth();
   const [canvasWidth, setCanvasWidth] = useState(1000);
-  const [zoomLevel, setZoomLevel] = useState(0.8); // Start slightly zoomed out for overview
-  const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Canvas panning state (Miro-like)
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [scrollStart, setScrollStart] = useState({ x: 0, y: 0 });
+  // Use the viewport hook for stable zoom/pan
+  const {
+    zoom: zoomLevel,
+    offset,
+    containerRef: viewportContainerRef,
+    zoomIn,
+    zoomOut,
+    setZoom,
+    resetView,
+    fitToContent,
+    handleWheel: handleViewportWheel,
+    handlePanStart: handleViewportPanStart,
+    handlePanMove: handleViewportPanMove,
+    handlePanEnd: handleViewportPanEnd,
+    screenToCanvas,
+    transform: viewportTransform,
+    isPanning,
+  } = useCanvasViewport({ initialZoom: 0.8 });
+  
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   // Connect mode state
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -316,18 +332,9 @@ export default function Canvas() {
     if (!dragConnectFromId) return;
     
     const handleMouseMove = (e: MouseEvent) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
-      const rect = canvas.getBoundingClientRect();
-      const scrollLeft = canvas.scrollLeft;
-      const scrollTop = canvas.scrollTop;
-      
-      // Convert to canvas coordinates, accounting for zoom
-      setDragCursorPos({
-        x: (e.clientX - rect.left + scrollLeft) / zoomLevel,
-        y: (e.clientY - rect.top + scrollTop) / zoomLevel,
-      });
+      // Use viewport's screenToCanvas for accurate coordinates
+      const coords = screenToCanvas(e.clientX, e.clientY);
+      setDragCursorPos(coords);
     };
     
     const handleMouseUp = () => {
@@ -343,7 +350,7 @@ export default function Canvas() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragConnectFromId, zoomLevel]);
+  }, [dragConnectFromId, screenToCanvas]);
 
   // Miro-like panning: start panning when clicking on empty canvas background
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
@@ -353,36 +360,22 @@ export default function Canvas() {
                                 target.closest('.canvas-pan-area');
     
     if (isCanvasBackground && e.button === 0 && !isConnectMode && !dragConnectFromId) {
-      setIsPanning(true);
-      setPanStart({ x: e.clientX, y: e.clientY });
-      const canvas = canvasRef.current;
-      if (canvas) {
-        setScrollStart({ x: canvas.scrollLeft, y: canvas.scrollTop });
-      }
+      handleViewportPanStart(e);
     }
-  }, [isConnectMode, dragConnectFromId]);
+  }, [isConnectMode, dragConnectFromId, handleViewportPanStart]);
 
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isPanning && canvasRef.current) {
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      canvasRef.current.scrollLeft = scrollStart.x - dx;
-      canvasRef.current.scrollTop = scrollStart.y - dy;
-    }
-  }, [isPanning, panStart, scrollStart]);
+    handleViewportPanMove(e);
+  }, [handleViewportPanMove]);
 
   const handleCanvasMouseUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+    handleViewportPanEnd();
+  }, [handleViewportPanEnd]);
 
   // Handle wheel zoom (Ctrl/Cmd + scroll)
   const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.05 : 0.05;
-      setZoomLevel(z => Math.max(0.25, Math.min(2, z + delta)));
-    }
-  }, []);
+    handleViewportWheel(e);
+  }, [handleViewportWheel]);
 
   // Handle manual save
   const handleManualSave = useCallback(() => {
@@ -722,13 +715,13 @@ export default function Canvas() {
           }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          {/* Zoomable Canvas Content */}
+          {/* Zoomable Canvas Content - uses center-based transform */}
           <div 
-            className="absolute inset-0 origin-top-left transition-transform duration-100"
+            className="absolute origin-top-left transition-transform duration-100"
             style={{
-              transform: `scale(${zoomLevel})`,
-              minWidth: `${Math.max(100 / zoomLevel, 150)}%`,
-              minHeight: `${Math.max(100 / zoomLevel, 180)}%`,
+              transform: viewportTransform,
+              width: '2000px',
+              height: '1800px',
             }}
           >
             {/* Canvas Grid Background - panning target */}
@@ -754,15 +747,15 @@ export default function Canvas() {
               }}
             />
 
-            {/* Funnel Level Labels */}
-            <div className="absolute left-4 top-0 bottom-0 w-24 pointer-events-none">
+            {/* Funnel Level Labels - using unique labels per level */}
+            <div className="absolute left-4 top-0 bottom-0 w-32 pointer-events-none">
               {FUNNEL_LEVELS.map((level) => (
                 <div
-                  key={level.name}
+                  key={level.level}
                   className="absolute text-xs text-muted-foreground/50 font-medium uppercase tracking-wider"
                   style={{ top: level.yOffset + 20 }}
                 >
-                  {level.name.replace(/-/g, ' ')}
+                  {FUNNEL_LEVEL_LABELS[level.level] || level.name.replace(/-/g, ' ')}
                 </div>
               ))}
             </div>
@@ -941,22 +934,35 @@ export default function Canvas() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.1))}
+                onClick={zoomOut}
                 disabled={zoomLevel <= 0.25}
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
-              <span className="text-xs text-muted-foreground w-12 text-center">
+              <button
+                className="text-xs text-muted-foreground w-14 text-center hover:text-foreground transition-colors"
+                onClick={resetView}
+                title="Reset view (100%)"
+              >
                 {Math.round(zoomLevel * 100)}%
-              </span>
+              </button>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => setZoomLevel(z => Math.min(2, z + 0.1))}
+                onClick={zoomIn}
                 disabled={zoomLevel >= 2}
               >
                 <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs ml-1"
+                onClick={() => fitToContent(positionedNodes)}
+                title="Fit all nodes in view"
+              >
+                Fit
               </Button>
             </div>
 
