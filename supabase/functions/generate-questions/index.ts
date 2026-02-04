@@ -56,6 +56,45 @@ const FULFILLMENT_CHAIN_OPTIONS = [
   'Clean up / pack up',
 ];
 
+// Industry-specific context for AI prompts
+function getIndustryContext(industry: string): string {
+  switch (industry) {
+    case 'healthcare-wellness':
+      return `For healthcare/wellness businesses, focus on:
+- Patient communication and care coordination
+- Treatment delivery and follow-up appointments
+- Documentation and compliance (HIPAA, notes, records)
+- Insurance verification and billing processes
+- Patient education and discharge planning
+- Follow-up scheduling and reminders
+DO NOT suggest home services options like "dispatch technician" or "site visit"`;
+    
+    case 'professional-services':
+      return `For professional services businesses, focus on:
+- Client onboarding and kickoff meetings
+- Project planning and scoping
+- Deliverable creation and review cycles
+- Client communication and status updates
+- Quality assurance and sign-off
+- Invoicing and payment collection
+DO NOT suggest physical service options`;
+    
+    case 'childcare-education':
+      return `For childcare/education businesses, focus on:
+- Student/child intake and orientation
+- Parent communication and updates
+- Daily care activities and curriculum
+- Progress reporting and conferences
+- Safety and compliance checks
+- Pickup/dismissal procedures
+DO NOT suggest home services options`;
+    
+    default:
+      return `For ${industry} businesses, generate industry-appropriate next steps.
+Consider the typical workflow for this type of business.`;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -78,11 +117,16 @@ serve(async (req) => {
     if (chainMode && lastFulfillmentStep) {
       console.log("[generate-questions] Chain mode - generating follow-up for:", lastFulfillmentStep);
       
+      // Industry-specific context for fulfillment chains
+      const industryContext = getIndustryContext(industry);
+      
       const chainSystemPrompt = `You are a business process expert helping map a ${industry} business's fulfillment workflow step by step.
 
 The user just described this step in their fulfillment process: "${lastFulfillmentStep}"
 
 Generate ONE follow-up question asking what happens IMMEDIATELY AFTER this step.
+
+${industryContext}
 
 Return a JSON object with:
 - id: "ai_chain_${fulfillmentChainDepth + 1}"
@@ -92,7 +136,7 @@ Return a JSON object with:
 - hint: Optional coaching tip for the sales rep
 
 IMPORTANT: 
-1. Make options specific to ${industry} when possible
+1. Make options HIGHLY SPECIFIC to ${industry} - no generic home services options for healthcare, etc.
 2. Always include "This is the final step" as the last option
 3. Return ONLY valid JSON, no other text`;
 

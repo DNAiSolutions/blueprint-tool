@@ -402,5 +402,91 @@ export function getIndustryOptions(industry?: Industry | string) {
     leadSources: getLeadSourceOptionsForIndustry(industry),
     qualificationCriteria: getQualificationOptionsForIndustry(industry),
     intakeMethods: getIntakeOptionsForIndustry(industry),
+    conversionEvents: getConversionOptionsForIndustry(industry),
   };
+}
+
+// ============================================
+// CONVERSION EVENT OPTIONS BY INDUSTRY
+// ============================================
+
+export const CONVERSION_OPTIONS_HOME_SERVICES: SelectOption[] = [
+  { value: 'on-site-estimate', label: 'On-Site Estimate', category: 'In-Person' },
+  { value: 'home-visit', label: 'Home Visit/Assessment', category: 'In-Person' },
+  { value: 'product-demo', label: 'Product/Service Demo', category: 'In-Person' },
+  { value: 'virtual-estimate', label: 'Virtual Estimate (Video Call)', category: 'Virtual' },
+  { value: 'phone-quote', label: 'Phone Quote', category: 'Virtual' },
+  { value: 'inspection', label: 'Inspection/Walk-Through', category: 'In-Person' },
+  { value: 'consultation', label: 'Consultation Call', category: 'Virtual' },
+];
+
+export const CONVERSION_OPTIONS_HEALTHCARE: SelectOption[] = [
+  { value: 'initial-consultation', label: 'Initial Consultation', category: 'In-Person' },
+  { value: 'phone-screening', label: 'Phone Screening Call', category: 'Virtual' },
+  { value: 'intake-assessment', label: 'Intake Assessment', category: 'In-Person' },
+  { value: 'new-patient-exam', label: 'New Patient Exam', category: 'In-Person' },
+  { value: 'telehealth-consult', label: 'Telehealth Consultation', category: 'Virtual' },
+  { value: 'free-consultation', label: 'Free Consultation', category: 'Virtual' },
+  { value: 'discovery-session', label: 'Discovery Session', category: 'Virtual' },
+  { value: 'wellness-evaluation', label: 'Wellness Evaluation', category: 'In-Person' },
+  { value: 'treatment-planning', label: 'Treatment Planning Session', category: 'In-Person' },
+  { value: 'insurance-verification', label: 'Insurance Verification Complete', category: 'Administrative' },
+];
+
+export const CONVERSION_OPTIONS_PROFESSIONAL: SelectOption[] = [
+  { value: 'discovery-call', label: 'Discovery Call', category: 'Virtual' },
+  { value: 'strategy-session', label: 'Strategy Session', category: 'Virtual' },
+  { value: 'proposal-presentation', label: 'Proposal Presentation', category: 'Virtual' },
+  { value: 'demo', label: 'Product/Service Demo', category: 'Virtual' },
+  { value: 'needs-assessment', label: 'Needs Assessment', category: 'Virtual' },
+  { value: 'audit-review', label: 'Audit/Review Meeting', category: 'In-Person' },
+  { value: 'scoping-call', label: 'Scoping Call', category: 'Virtual' },
+];
+
+export const CONVERSION_OPTIONS_CHILDCARE: SelectOption[] = [
+  { value: 'facility-tour', label: 'Facility Tour', category: 'In-Person' },
+  { value: 'meet-teachers', label: 'Meet the Teachers', category: 'In-Person' },
+  { value: 'enrollment-meeting', label: 'Enrollment Meeting', category: 'In-Person' },
+  { value: 'trial-day', label: 'Trial Day/Visit', category: 'In-Person' },
+  { value: 'parent-interview', label: 'Parent Interview', category: 'In-Person' },
+  { value: 'open-house', label: 'Open House Event', category: 'In-Person' },
+  { value: 'virtual-tour', label: 'Virtual Tour', category: 'Virtual' },
+];
+
+export const CONVERSION_OPTIONS_GENERIC: SelectOption[] = [
+  { value: 'consultation', label: 'Consultation Call', category: 'Virtual' },
+  { value: 'demo', label: 'Product/Service Demo', category: 'Virtual' },
+  { value: 'discovery-call', label: 'Discovery Call', category: 'Virtual' },
+  { value: 'in-person-meeting', label: 'In-Person Meeting', category: 'In-Person' },
+  { value: 'proposal', label: 'Proposal Review', category: 'Virtual' },
+  { value: 'trial', label: 'Trial/Pilot', category: 'In-Person' },
+];
+
+/**
+ * Get conversion event options based on industry
+ */
+export function getConversionOptionsForIndustry(industry?: Industry | string): SelectOption[] {
+  switch (industry) {
+    case 'home-services':
+    case 'roofing':
+    case 'pest-control':
+    case 'hvac':
+    case 'plumbing':
+    case 'landscaping':
+    case 'cleaning':
+    case 'other-service':
+      return CONVERSION_OPTIONS_HOME_SERVICES;
+    case 'healthcare-wellness':
+      return CONVERSION_OPTIONS_HEALTHCARE;
+    case 'professional-services':
+      return CONVERSION_OPTIONS_PROFESSIONAL;
+    case 'childcare-education':
+      return CONVERSION_OPTIONS_CHILDCARE;
+    case 'transportation-logistics':
+    case 'automotive':
+    case 'personal-services':
+    case 'custom':
+    default:
+      return CONVERSION_OPTIONS_GENERIC;
+  }
 }

@@ -57,6 +57,10 @@ export function useQuestionFlow(sessionId?: string, industry?: Industry) {
       if (q.id === 'q11') {
         return { ...q, options: industryOptions.qualificationCriteria };
       }
+      // Resolve conversion event options by industry
+      if (q.id === 'q_conversion_type') {
+        return { ...q, options: industryOptions.conversionEvents };
+      }
       return q;
     });
 
