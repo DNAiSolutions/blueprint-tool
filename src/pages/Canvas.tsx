@@ -174,18 +174,17 @@ export default function Canvas() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [positionedNodes, selectedNodeId, deleteNode, showEditModal, showAddModal]);
 
-  // Redirect if no session found
-  if (!sessionId) {
-    navigate('/');
-    return null;
-  }
+  // Note: sessionId check moved after all hook definitions to avoid React lint errors
 
   // Handle node click - different behavior in connect mode
   const handleNodeClick = useCallback((node: SessionNode) => {
+    console.log('[Connect] Node clicked:', node.label, 'isConnectMode:', isConnectMode, 'pendingFromNodeId:', pendingFromNodeId);
+    
     if (isConnectMode) {
       if (!pendingFromNodeId) {
         // First click - select "from" node
         setPendingFromNodeId(node.id);
+        setSelectedNodeId(node.id); // Highlight the selected source node
         toast.info(`Selected "${node.label}" as source. Click another node to connect.`);
       } else {
         // Second click - create connection
@@ -206,12 +205,15 @@ export default function Canvas() {
         
         // Create the connection
         if (fromNode && updateNode) {
+          console.log('[Connect] Creating connection:', fromNode.label, '→', node.label);
           updateNode(pendingFromNodeId, {
             connections: [...fromNode.connections, node.id],
           });
           toast.success(`Connected "${fromNode.label}" → "${node.label}"`);
         }
+        // After connecting, stay in connect mode but clear pendingFrom for next connection
         setPendingFromNodeId(null);
+        setSelectedNodeId(null);
       }
     } else {
       // Normal mode - toggle selection for highlighting
@@ -632,6 +634,12 @@ export default function Canvas() {
     ? currentSession?.nodes.find(n => n.id === pendingFromNodeId) 
     : null;
 
+  // Redirect if no session found - moved after all hooks
+  if (!sessionId) {
+    navigate('/');
+    return null;
+  }
+
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Top Header */}
@@ -727,8 +735,8 @@ export default function Canvas() {
             <div 
               className="canvas-pan-area absolute inset-0"
               style={{
-                minHeight: '1400px', // Taller canvas for more funnel stages
-                minWidth: '1600px',  // Wider canvas for more horizontal spread
+                minHeight: '1800px', // Taller canvas for deeper funnel stages
+                minWidth: '2000px',  // Wider canvas for more horizontal spread
                 backgroundImage: `
                   linear-gradient(to right, hsl(var(--border) / 0.25) 1px, transparent 1px),
                   linear-gradient(to bottom, hsl(var(--border) / 0.25) 1px, transparent 1px)
@@ -821,7 +829,7 @@ export default function Canvas() {
 
             {/* Render Nodes with Context Menu */}
             {positionedNodes.length > 0 && (
-              <div className="absolute inset-0 min-h-[1600px] min-w-[1600px]">
+              <div className="absolute inset-0 min-h-[1800px] min-w-[2000px]">
                 {positionedNodes.map((node) => (
                   <ContextMenu key={node.id}>
                     <ContextMenuTrigger asChild>
