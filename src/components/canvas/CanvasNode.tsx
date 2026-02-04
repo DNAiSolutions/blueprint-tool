@@ -11,7 +11,9 @@ const NODE_COLORS: Record<string, { border: string; bg: string }> = {
   'close': { border: 'hsl(145, 60%, 45%)', bg: 'hsl(145, 60%, 45%)' },           // Green #27AE60
   'fulfillment': { border: 'hsl(220, 15%, 40%)', bg: 'hsl(220, 15%, 40%)' },     // Dark Gray #34495E
   'review': { border: 'hsl(220, 15%, 40%)', bg: 'hsl(220, 15%, 40%)' },          // Dark Gray
-  'workflow': { border: 'hsl(45, 70%, 50%)', bg: 'hsl(45, 70%, 50%)' },          // Gold
+  'workflow': { border: 'hsl(45, 70%, 50%)', bg: 'hsl(45, 70%, 50%)' },          // Gold (default)
+  'workflow-qualified': { border: 'hsl(145, 60%, 45%)', bg: 'hsl(145, 60%, 45%)' },     // Green for qualified
+  'workflow-disqualified': { border: 'hsl(0, 60%, 50%)', bg: 'hsl(0, 60%, 50%)' },      // Red for disqualified
   'handoff': { border: 'hsl(200, 60%, 50%)', bg: 'hsl(200, 60%, 50%)' },         // Light Blue
   'verification': { border: 'hsl(280, 60%, 55%)', bg: 'hsl(280, 60%, 55%)' },    // Purple
   'custom': { border: 'hsl(0, 0%, 50%)', bg: 'hsl(0, 0%, 50%)' },                // Gray
@@ -42,15 +44,28 @@ export function CanvasNode({
   onStartConnectionDrag,
   onCompleteConnectionDrop,
 }: CanvasNodeProps) {
-  const colors = node.isLeak ? LEAK_COLOR : (NODE_COLORS[node.type] || NODE_COLORS.custom);
+  // Determine color based on node type and pathType
+  const getNodeColor = () => {
+    if (node.isLeak) return LEAK_COLOR;
+    // Workflow nodes have special colors based on pathType
+    if (node.type === 'workflow' && node.pathType) {
+      return NODE_COLORS[`workflow-${node.pathType}`] || NODE_COLORS.workflow;
+    }
+    return NODE_COLORS[node.type] || NODE_COLORS.custom;
+  };
+  const colors = getNodeColor();
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragPosition, setDragPosition] = useState({ x: node.position.x, y: node.position.y });
   const clickTimeRef = useRef<number>(0);
   const clickNodeRef = useRef<string>('');
 
-  // Get type icon
+  // Get type icon - with special handling for workflow paths
   const getTypeIcon = () => {
+    // Special icons for qualified/disqualified workflow nodes
+    if (node.type === 'workflow' && node.pathType === 'qualified') return '✅';
+    if (node.type === 'workflow' && node.pathType === 'disqualified') return '❌';
+    
     const icons: Record<string, string> = {
       'lead-source': '📣',
       'intake': '📞',
@@ -65,6 +80,13 @@ export function CanvasNode({
       'custom': '📦',
     };
     return icons[node.type] || '📦';
+  };
+
+  // Get type label - with special handling for workflow paths
+  const getTypeLabel = () => {
+    if (node.type === 'workflow' && node.pathType === 'qualified') return 'qualified';
+    if (node.type === 'workflow' && node.pathType === 'disqualified') return 'not qualified';
+    return node.type.replace('-', ' ');
   };
 
   // Format conversion rate color
@@ -221,7 +243,7 @@ export function CanvasNode({
         style={{ backgroundColor: colors.bg }}
       >
         <span>{getTypeIcon()}</span>
-        <span>{node.type.replace('-', ' ')}</span>
+        <span>{getTypeLabel()}</span>
       </div>
       
       {/* Primary Label - Actual content name */}

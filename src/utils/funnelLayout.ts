@@ -20,35 +20,39 @@ export interface FunnelLevel {
 }
 
 // Map node types to funnel levels
+// Updated to support deeper funnels with better separation
 export const NODE_LEVELS: Record<NodeType, number> = {
   'lead-source': 0,    // Top of funnel (widest)
   'intake': 1,         // Second row
   'decision': 2,       // Qualification level
   'verification': 2,   // Same level as qualification
-  'conversion': 3,     // Appointments/Calls
-  'workflow': 3,       // Intermediate workflow steps (same as conversion)
+  'workflow': 3,       // Qualified/Disqualified paths (post-qualification)
   'handoff': 3,        // Handoff steps (same level)
-  'close': 4,          // Close level
-  'fulfillment': 5,    // Bottom (narrowest)
-  'review': 5,         // Bottom (with fulfillment)
-  'custom': 3,         // Default to middle
+  'conversion': 4,     // Appointments/Calls
+  'close': 5,          // Close level
+  'fulfillment': 6,    // Bottom (narrowest)
+  'review': 6,         // Bottom (with fulfillment)
+  'custom': 4,         // Default to middle
 };
 
+// Increased vertical spacing to prevent bunching as maps grow
+// Extended to 7 levels for deeper funnels
 export const FUNNEL_LEVELS: FunnelLevel[] = [
-  { level: 0, name: 'top-of-funnel', yOffset: 80 },
-  { level: 1, name: 'intake', yOffset: 220 },
-  { level: 2, name: 'qualification', yOffset: 360 },
-  { level: 3, name: 'conversion', yOffset: 500 },
-  { level: 4, name: 'close', yOffset: 640 },
-  { level: 5, name: 'fulfillment', yOffset: 780 },
+  { level: 0, name: 'top-of-funnel', yOffset: 100 },
+  { level: 1, name: 'intake', yOffset: 300 },
+  { level: 2, name: 'qualification', yOffset: 500 },
+  { level: 3, name: 'conversion', yOffset: 700 },   // Qualified/Disqualified paths
+  { level: 4, name: 'conversion', yOffset: 900 },   // Conversion events
+  { level: 5, name: 'close', yOffset: 1100 },
+  { level: 6, name: 'fulfillment', yOffset: 1300 },
 ];
 
-// Canvas dimensions
-const CANVAS_CENTER_X = 500; // Will be dynamic based on canvas width
-const MAX_FUNNEL_WIDTH = 900;
-const MIN_FUNNEL_WIDTH = 200;
-const NODE_WIDTH = 160;
-const NODE_GAP = 24;
+// Canvas dimensions - increased for better spacing
+const CANVAS_CENTER_X = 700; // Will be dynamic based on canvas width
+const MAX_FUNNEL_WIDTH = 1400;
+const MIN_FUNNEL_WIDTH = 350;
+const NODE_WIDTH = 180;
+const NODE_GAP = 48; // Generous horizontal gap
 
 /**
  * Calculate the width available at each funnel level

@@ -56,8 +56,13 @@ export default function Canvas() {
   const { currentSession, loadSession, addNode, updateNode, deleteNode, duplicateNode, isSessionReady } = useSession();
   const { user } = useAuth();
   const [canvasWidth, setCanvasWidth] = useState(1000);
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(0.8); // Start slightly zoomed out for overview
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Canvas panning state (Miro-like)
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [scrollStart, setScrollStart] = useState({ x: 0, y: 0 });
 
   // Connect mode state
   const [isConnectMode, setIsConnectMode] = useState(false);
@@ -338,6 +343,45 @@ export default function Canvas() {
     };
   }, [dragConnectFromId, zoomLevel]);
 
+  // Miro-like panning: start panning when clicking on empty canvas background
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only start panning if clicking directly on the canvas (not on a node)
+    const target = e.target as HTMLElement;
+    const isCanvasBackground = target.classList.contains('canvas-pan-area') || 
+                                target.closest('.canvas-pan-area');
+    
+    if (isCanvasBackground && e.button === 0 && !isConnectMode && !dragConnectFromId) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      const canvas = canvasRef.current;
+      if (canvas) {
+        setScrollStart({ x: canvas.scrollLeft, y: canvas.scrollTop });
+      }
+    }
+  }, [isConnectMode, dragConnectFromId]);
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isPanning && canvasRef.current) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      canvasRef.current.scrollLeft = scrollStart.x - dx;
+      canvasRef.current.scrollTop = scrollStart.y - dy;
+    }
+  }, [isPanning, panStart, scrollStart]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  // Handle wheel zoom (Ctrl/Cmd + scroll)
+  const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.05 : 0.05;
+      setZoomLevel(z => Math.max(0.25, Math.min(2, z + delta)));
+    }
+  }, []);
+
   // Handle manual save
   const handleManualSave = useCallback(() => {
     setLastSaved(new Date());
@@ -448,6 +492,76 @@ export default function Canvas() {
       return;
     }
     
+    // Handle intake-to-qualification connection batch
+    // Connects ALL intake nodes to the qualification decision node
+    if (nodeType === 'intake-to-qualification-batch') {
+      // Find the qualification decision node (just created)
+      const qualificationNode = currentSession.nodes.find(n => n.type === 'decision');
+      if (!qualificationNode) {
+        console.warn('[DEBUG] Qualification node not found');
+        return;
+      }
+      
+      // Find all intake nodes and connect them to qualification
+      const intakeNodes = currentSession.nodes.filter(n => n.type === 'intake');
+      if (intakeNodes.length === 0) {
+        console.warn('[DEBUG] No intake nodes found to connect to qualification');
+        return;
+      }
+      
+      // Connect each intake node to the qualification node
+      let connectionsUpdated = 0;
+      intakeNodes.forEach(intakeNode => {
+        const existingConnections = intakeNode.connections || [];
+        if (!existingConnections.includes(qualificationNode.id)) {
+          updateNode(intakeNode.id, {
+            connections: [...existingConnections, qualificationNode.id],
+          });
+          connectionsUpdated++;
+        }
+      });
+      
+      if (connectionsUpdated > 0) {
+        console.log('[DEBUG] intake-to-qualification-batch connected', connectionsUpdated, 'intake nodes');
+        toast.success(`Connected ${connectionsUpdated} intake method(s) → Qualification`);
+      }
+      return;
+    }
+    
+    // Handle qualification-to-paths connection batch
+    // Connects the qualification node to all qualified/disqualified workflow nodes
+    if (nodeType === 'qualification-to-paths-batch') {
+      const pathType = data.pathType as 'qualified' | 'disqualified';
+      const pathSourceIds = data.pathSourceIds as string[];
+      
+      // Find the qualification decision node
+      const qualificationNode = currentSession.nodes.find(n => n.type === 'decision');
+      if (!qualificationNode) {
+        console.warn('[DEBUG] Qualification node not found for path connection');
+        return;
+      }
+      
+      // Find all workflow nodes with matching sourceIds
+      const workflowNodeIds: string[] = [];
+      pathSourceIds.forEach(sourceId => {
+        const workflowNode = currentSession.nodes.find(n => 
+          n.type === 'workflow' && n.sourceId === sourceId
+        );
+        if (workflowNode) {
+          workflowNodeIds.push(workflowNode.id);
+        }
+      });
+      
+      if (workflowNodeIds.length > 0) {
+        const existingConnections = qualificationNode.connections || [];
+        const allConnections = [...new Set([...existingConnections, ...workflowNodeIds])];
+        updateNode(qualificationNode.id, { connections: allConnections });
+        console.log('[DEBUG] qualification-to-paths-batch connected', workflowNodeIds.length, pathType, 'paths');
+        toast.success(`Connected Qualification → ${workflowNodeIds.length} ${pathType} path(s)`);
+      }
+      return;
+    }
+    
     // Create new node (id is generated by addNode)
     // For intake nodes, auto-connect to all existing lead sources
     let connectToNodeIds: string[] = [];
@@ -474,6 +588,8 @@ export default function Canvas() {
       // Store qualification criteria (for decision nodes)
       criteria: data.criteria,
       criteriaLabels: data.criteriaLabels,
+      // Store workflow path type (qualified/disqualified)
+      pathType: data.pathType,
     });
   }, [currentSession, addNode, updateNode]);
 
@@ -580,14 +696,19 @@ export default function Canvas() {
           )}
         </aside>
 
-        {/* Center Canvas */}
+        {/* Center Canvas - Miro-like panning */}
         <main 
           ref={canvasRef}
-          className="flex-1 relative overflow-auto bg-background focus:outline-none"
+          className={`flex-1 relative overflow-auto bg-background focus:outline-none ${isPanning ? 'cursor-grabbing' : ''}`}
           tabIndex={0}
-          onClick={() => {
-            // Deselect when clicking on empty canvas
-            if (!isConnectMode) {
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onMouseLeave={handleCanvasMouseUp}
+          onWheel={handleCanvasWheel}
+          onClick={(e) => {
+            // Deselect when clicking on empty canvas (not while panning)
+            if (!isConnectMode && !isPanning) {
               setSelectedNodeId(null);
             }
           }}
@@ -595,22 +716,25 @@ export default function Canvas() {
         >
           {/* Zoomable Canvas Content */}
           <div 
-            className="absolute inset-0 origin-top-left transition-transform duration-150"
+            className="absolute inset-0 origin-top-left transition-transform duration-100"
             style={{
               transform: `scale(${zoomLevel})`,
-              minWidth: `${100 / zoomLevel}%`,
-              minHeight: `${100 / zoomLevel}%`,
+              minWidth: `${Math.max(100 / zoomLevel, 150)}%`,
+              minHeight: `${Math.max(100 / zoomLevel, 180)}%`,
             }}
           >
-            {/* Canvas Grid Background */}
+            {/* Canvas Grid Background - panning target */}
             <div 
-              className="absolute inset-0 min-h-[900px]"
+              className="canvas-pan-area absolute inset-0"
               style={{
+                minHeight: '1400px', // Taller canvas for more funnel stages
+                minWidth: '1600px',  // Wider canvas for more horizontal spread
                 backgroundImage: `
-                  linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
-                  linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
+                  linear-gradient(to right, hsl(var(--border) / 0.25) 1px, transparent 1px),
+                  linear-gradient(to bottom, hsl(var(--border) / 0.25) 1px, transparent 1px)
                 `,
-                backgroundSize: '24px 24px',
+                backgroundSize: '32px 32px', // Larger grid cells
+                cursor: isPanning ? 'grabbing' : 'grab',
               }}
               ref={(el) => {
                 if (el) {
@@ -697,7 +821,7 @@ export default function Canvas() {
 
             {/* Render Nodes with Context Menu */}
             {positionedNodes.length > 0 && (
-              <div className="absolute inset-0 min-h-[900px]">
+              <div className="absolute inset-0 min-h-[1600px] min-w-[1600px]">
                 {positionedNodes.map((node) => (
                   <ContextMenu key={node.id}>
                     <ContextMenuTrigger asChild>

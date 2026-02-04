@@ -98,18 +98,52 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
 
       // Create nodes for each selection if applicable
       if (currentQuestion.nodeCreation?.createPerSelection && onNodeCreate) {
+        // Determine if these are workflow nodes that should connect FROM qualification
+        const isQualifiedPath = currentQuestion.id === 'q_qualified_path';
+        const isDisqualifiedPath = currentQuestion.id === 'q_disqualified_path';
+        
+        // Collect all created node IDs for batch connection
+        const createdNodeIds: string[] = [];
+        
         multiSelectValue.forEach((value) => {
           const option = currentQuestion.options?.find(o => o.value === value);
           const label = option?.label || value.replace(/-/g, ' ');
+          const nodeId = `${currentQuestion.nodeCreation!.type}-${value}-${Date.now()}`;
           
-          onNodeCreate(currentQuestion.nodeCreation!.type, {
+          // Add metadata for qualified/disqualified paths
+          const nodeData: Record<string, any> = {
             sourceId: value,
             label: label,
             questionId: currentQuestion.id,
-            // Connections are made via mapping questions, not auto-connect
             autoConnectToLeadSources: false,
-          });
+          };
+          
+          // Mark qualified vs disqualified paths for visual distinction
+          if (isQualifiedPath) {
+            nodeData.pathType = 'qualified';
+          } else if (isDisqualifiedPath) {
+            nodeData.pathType = 'disqualified';
+          }
+          
+          onNodeCreate(currentQuestion.nodeCreation!.type, nodeData);
+          createdNodeIds.push(value); // Track source IDs for connection
         });
+        
+        // After creating qualified path nodes, connect FROM the qualification decision node
+        if (isQualifiedPath && createdNodeIds.length > 0) {
+          onNodeCreate('qualification-to-paths-batch', {
+            pathType: 'qualified',
+            pathSourceIds: createdNodeIds,
+          });
+        }
+        
+        // Same for disqualified paths
+        if (isDisqualifiedPath && createdNodeIds.length > 0) {
+          onNodeCreate('qualification-to-paths-batch', {
+            pathType: 'disqualified',
+            pathSourceIds: createdNodeIds,
+          });
+        }
       }
 
       // Handle single node with all selections (e.g., qualification criteria)
@@ -125,6 +159,11 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
           criteria: multiSelectValue,
           criteriaLabels: labels,
           questionId: currentQuestion.id,
+        });
+        
+        // Auto-connect all intake nodes TO this qualification node
+        onNodeCreate('intake-to-qualification-batch', {
+          criteriaCount: multiSelectValue.length,
         });
       }
 

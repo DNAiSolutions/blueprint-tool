@@ -65,6 +65,8 @@ export interface SessionNode {
   // Qualification criteria (for decision nodes)
   criteria?: string[];            // Array of qualification criteria IDs
   criteriaLabels?: string[];      // Human-readable labels for display
+  // Workflow path type (for qualified/disqualified branching)
+  pathType?: 'qualified' | 'disqualified'; // Visual distinction for workflow nodes
 }
 
 export interface SessionMetrics {
