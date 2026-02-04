@@ -222,7 +222,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         className={cn(
                           'flex w-full items-center gap-3 rounded-lg py-2 pl-11 pr-3 text-sm transition-all duration-200',
                           isActive(child.href)
-                            ? 'bg-accent text-accent-foreground font-medium'
+                            ? 'bg-accent/20 text-accent font-medium'
                             : 'text-sidebar-foreground/60 hover:bg-sidebar-muted hover:text-sidebar-foreground'
                         )}
                       >
@@ -241,7 +241,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 className={cn(
                   'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                   isActive(item.href || '')
-                    ? 'bg-accent text-accent-foreground shadow-level-1'
+                    ? 'bg-accent/20 text-accent shadow-level-1'
                     : 'text-sidebar-foreground/70 hover:bg-sidebar-muted hover:text-sidebar-foreground',
                   collapsed && 'justify-center px-2'
                 )}

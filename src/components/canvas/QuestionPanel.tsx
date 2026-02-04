@@ -395,17 +395,17 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
             </div>
           )}
 
-          {/* Current Question */}
+          {/* Current Question - Phase 1: Enhanced prominence */}
           {currentQuestion && currentSection && (
-            <div className="p-4 rounded-lg bg-accent/10 border-l-2 border-accent animate-fade-in">
+            <div className="p-5 rounded-lg bg-accent/15 border-l-2 border-accent shadow-level-1 animate-fade-in">
               {/* Section badge */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                <span>{SECTION_META[currentQuestion.section].icon}</span>
-                <span>{currentSection.label}</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/80 mb-3">
+                <span className="text-base">{SECTION_META[currentQuestion.section].icon}</span>
+                <span className="font-medium tracking-wide">{currentSection.label}</span>
               </div>
               
               {/* Question */}
-              <p className="text-sm font-medium text-foreground mb-4">
+              <p className="text-[15px] font-medium text-foreground leading-relaxed mb-4">
                 {currentQuestion.question}
                 {currentQuestion.required && <span className="text-destructive ml-1">*</span>}
               </p>

@@ -210,11 +210,13 @@ export function CanvasNode({
   return (
     <div
       className={cn(
-        "canvas-node absolute p-3 bg-card rounded-lg shadow-md min-w-[150px] max-w-[200px] transition-all select-none group",
-        isDragging ? "cursor-grabbing opacity-80 shadow-xl z-50" : "cursor-grab hover:shadow-lg hover:scale-105",
-        isSelected && "ring-2 ring-accent ring-offset-2",
+        "canvas-node absolute p-3 bg-card rounded-lg shadow-level-1 min-w-[150px] max-w-[200px] select-none group",
+        "transition-all duration-200 ease-out",
+        isDragging ? "cursor-grabbing opacity-90 shadow-level-3 z-50 scale-105" : "cursor-grab",
+        !isDragging && "hover:shadow-level-2 hover:scale-[1.02] hover:-translate-y-0.5",
+        isSelected && "ring-2 ring-accent ring-offset-2 ring-offset-background",
         isConnectionDragging && "ring-2 ring-accent/50 ring-dashed",
-        node.isLeak && "animate-pulse"
+        node.isLeak && "leak-pulse"
       )}
       style={{
         left: displayPosition.x,

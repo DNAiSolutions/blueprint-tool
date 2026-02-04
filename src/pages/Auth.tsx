@@ -216,8 +216,8 @@ export default function Auth() {
               <CardContent>
                 {/* Sign In Form */}
                 <TabsContent value="signin" className="mt-0">
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <CardDescription className="mb-4">
+                  <form onSubmit={handleSignIn} className="space-y-5">
+                    <CardDescription className="mb-5">
                       Welcome back! Sign in to access your ALIGN sessions.
                     </CardDescription>
 
@@ -277,8 +277,8 @@ export default function Auth() {
 
                 {/* Sign Up Form */}
                 <TabsContent value="signup" className="mt-0">
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <CardDescription className="mb-4">
+                  <form onSubmit={handleSignUp} className="space-y-5">
+                    <CardDescription className="mb-5">
                       Create your account to start using ALIGN.
                     </CardDescription>
 

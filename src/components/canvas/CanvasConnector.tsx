@@ -1,5 +1,6 @@
 import { SessionNode } from '@/types/session';
 import { calculateConnectorPath } from '@/utils/funnelLayout';
+import { cn } from '@/lib/utils';
 
 interface CanvasConnectorProps {
   fromNode: SessionNode;
@@ -75,7 +76,7 @@ export function CanvasConnector({
         onClick={onClick}
       />
       
-      {/* Main connector line */}
+      {/* Main connector line - with animation */}
       <path
         d={path}
         stroke={strokeColor}
@@ -83,7 +84,11 @@ export function CanvasConnector({
         fill="none"
         strokeLinecap="round"
         strokeDasharray={strokeDasharray === 'none' ? undefined : strokeDasharray}
-        className={isLeak ? 'animate-pulse' : undefined}
+        className={cn(
+          "transition-all duration-200",
+          isLeak && "animate-pulse",
+          !isLeak && !isSelected && "animate-connector-appear"
+        )}
         style={{ pointerEvents: 'none' }}
       />
       
