@@ -390,13 +390,55 @@ export default function Canvas() {
     }
 
     // Handle source-to-intake connection mapping (lead source → intake)
+    // BATCHED VERSION: Accepts multiple intake IDs at once
+    if (nodeType === 'source-to-intake-connection-batch') {
+      const leadSourceNode = currentSession.nodes.find(n => n.sourceId === data.leadSourceId);
+      
+      console.log('[DEBUG] source-to-intake-connection-batch', {
+        leadSourceId: data.leadSourceId,
+        intakeIds: data.intakeIds,
+        leadSourceNode: leadSourceNode ? { id: leadSourceNode.id, label: leadSourceNode.label } : null,
+      });
+      
+      if (!leadSourceNode) {
+        console.warn('[DEBUG] Lead source node not found for sourceId:', data.leadSourceId);
+        return;
+      }
+      
+      // Collect all intake node IDs
+      const intakeNodeIds: string[] = [];
+      (data.intakeIds as string[]).forEach((intakeId: string) => {
+        const intakeNode = currentSession.nodes.find(n => n.sourceId === intakeId);
+        if (intakeNode) {
+          intakeNodeIds.push(intakeNode.id);
+          console.log('[DEBUG] Found intake node:', { intakeId, nodeId: intakeNode.id, label: intakeNode.label });
+        } else {
+          console.warn('[DEBUG] Intake node not found for sourceId:', intakeId);
+        }
+      });
+      
+      if (intakeNodeIds.length > 0 && updateNode) {
+        const existingConnections = leadSourceNode.connections || [];
+        // Dedupe: merge existing + new, remove duplicates
+        const allConnections = [...new Set([...existingConnections, ...intakeNodeIds])];
+        console.log('[DEBUG] Updating connections:', {
+          nodeId: leadSourceNode.id,
+          before: existingConnections,
+          after: allConnections,
+        });
+        updateNode(leadSourceNode.id, { connections: allConnections });
+        toast.success(`Connected ${leadSourceNode.label} → ${intakeNodeIds.length} intake method(s)`);
+      }
+      return;
+    }
+    
+    // Legacy single-connection handler (keep for backwards compat)
     if (nodeType === 'source-to-intake-connection') {
       const leadSourceNode = currentSession.nodes.find(n => n.sourceId === data.leadSourceId);
       const intakeNode = currentSession.nodes.find(n => n.sourceId === data.intakeId);
       
       if (leadSourceNode && intakeNode && updateNode) {
         const existingConnections = leadSourceNode.connections || [];
-        // Prevent duplicates
         if (!existingConnections.includes(intakeNode.id)) {
           updateNode(leadSourceNode.id, {
             connections: [...existingConnections, intakeNode.id],

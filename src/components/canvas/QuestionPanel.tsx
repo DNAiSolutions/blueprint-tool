@@ -85,15 +85,14 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
       }
 
       // Handle intake-to-source mapping questions (q_intake_map_*)
+      // BATCHED: Pass all intake IDs at once to avoid race conditions
       const intakeMappingMatch = currentQuestion.id.match(/^q_intake_map_(.+)$/);
       if (intakeMappingMatch && onNodeCreate) {
         const leadSourceId = intakeMappingMatch[1];
-        // For each selected intake method, create a connection FROM this lead source TO the intake
-        multiSelectValue.forEach((intakeId) => {
-          onNodeCreate('source-to-intake-connection', {
-            leadSourceId: leadSourceId,
-            intakeId: intakeId,
-          });
+        // Batch all intake IDs into a single call to prevent lost connections
+        onNodeCreate('source-to-intake-connection-batch', {
+          leadSourceId: leadSourceId,
+          intakeIds: multiSelectValue, // array of all selected intakes
         });
       }
 
