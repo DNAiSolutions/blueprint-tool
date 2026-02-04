@@ -23,16 +23,16 @@ export function CanvasConnector({
 }: CanvasConnectorProps) {
   const path = calculateConnectorPath(fromNode, toNode);
   
-  // Determine styling based on state - BOLD SOLID lines
-  let strokeColor = 'hsl(var(--border))';
-  let strokeWidth = 3; // Bold default
+  // Determine styling based on state - BOLD SOLID lines with HIGH VISIBILITY
+  let strokeColor = 'hsl(220, 30%, 55%)'; // Brighter blue-gray for visibility
+  let strokeWidth = 4; // Extra bold default
   
   if (isLeak) {
     strokeColor = 'hsl(0, 70%, 55%)'; // Red - solid, no dash
-    strokeWidth = 3;
-  } else if (isSelected) {
-    strokeColor = 'hsl(170, 65%, 45%)'; // Teal
     strokeWidth = 4;
+  } else if (isSelected) {
+    strokeColor = 'hsl(170, 65%, 50%)'; // Brighter teal
+    strokeWidth = 5;
   }
 
   // Calculate midpoint for label - uses same dimensions as funnelLayout
