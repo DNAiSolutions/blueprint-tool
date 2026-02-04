@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,9 +29,10 @@ interface QuestionPanelProps {
   sessionId?: string;
   industry?: Industry;
   onNodeCreate?: (nodeType: string, data: Record<string, any>) => void;
+  onAnswersChange?: (answers: Record<string, any>) => void; // NEW: Callback when answers change
 }
 
-export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPanelProps) {
+export function QuestionPanel({ sessionId, industry, onNodeCreate, onAnswersChange }: QuestionPanelProps) {
   const {
     currentQuestion,
     currentSection,
@@ -45,7 +46,16 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
     injectDynamicQuestions,
     selectedLeadSources,
     selectedIntakeMethods,
+    answers, // Get raw answers for AI Readiness
+    markFulfillmentComplete, // NEW: Mark fulfillment as complete
   } = useQuestionFlow(sessionId, industry);
+  
+  // Notify parent when answers change for AI Readiness integration
+  useEffect(() => {
+    if (onAnswersChange && Object.keys(answers).length > 0) {
+      onAnswersChange(answers);
+    }
+  }, [answers, onAnswersChange]);
 
   const [inputValue, setInputValue] = useState('');
   const [multiSelectValue, setMultiSelectValue] = useState<string[]>([]);
@@ -548,6 +558,24 @@ export function QuestionPanel({ sessionId, industry, onNodeCreate }: QuestionPan
                     </Button>
                   )}
                 </div>
+              )}
+              
+              {/* Mark Fulfillment Complete Button - shown during fulfillment section */}
+              {currentQuestion.section === 'fulfillment' && !currentQuestion.id.includes('review') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-3 gap-2 border-accent text-accent hover:bg-accent/10"
+                  onClick={() => {
+                    markFulfillmentComplete();
+                    onNodeCreate?.('fulfillment-complete', {
+                      label: 'Fulfillment Complete',
+                    });
+                  }}
+                >
+                  <Check className="h-3 w-3" />
+                  That's the last fulfillment step
+                </Button>
               )}
             </div>
           )}

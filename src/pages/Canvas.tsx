@@ -108,6 +108,9 @@ export default function Canvas() {
     }
   }, [sessionId, loadSession]);
 
+  // State for question answers (for AI Readiness integration)
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, any>>({});
+  
   // Calculate positioned nodes
   const positionedNodes = useMemo(() => {
     if (!currentSession?.nodes) return [];
@@ -118,8 +121,10 @@ export default function Canvas() {
   // Calculate metrics
   const metrics = useMetricsCalculator(currentSession?.nodes || []);
   
-  // Calculate AI Readiness
-  const aiReadiness = useAIReadiness(currentSession?.nodes || []);
+  // Calculate AI Readiness - now with question answers integration!
+  const aiReadiness = useAIReadiness(currentSession?.nodes || [], {
+    questionAnswers,
+  });
 
   // Auto-save effect
   useEffect(() => {
@@ -693,6 +698,7 @@ export default function Canvas() {
               sessionId={sessionId} 
               industry={currentSession?.industry}
               onNodeCreate={handleNodeCreate}
+              onAnswersChange={setQuestionAnswers}
             />
           )}
         </aside>
@@ -831,6 +837,8 @@ export default function Canvas() {
                           node={node}
                           isSelected={node.id === selectedNodeId || node.id === pendingFromNodeId}
                           isConnectionDragging={!!dragConnectFromId && dragConnectFromId !== node.id}
+                          isConnectModeActive={isConnectMode}
+                          isPendingSource={node.id === pendingFromNodeId}
                           onClick={handleNodeClick}
                           onDoubleClick={handleNodeDoubleClick}
                           onDragEnd={handleNodeDragEnd}
