@@ -23,18 +23,16 @@ export function CanvasConnector({
 }: CanvasConnectorProps) {
   const path = calculateConnectorPath(fromNode, toNode);
   
-  // Determine styling based on state
+  // Determine styling based on state - BOLD SOLID lines
   let strokeColor = 'hsl(var(--border))';
-  let strokeWidth = 2;
-  let strokeDasharray = 'none';
+  let strokeWidth = 3; // Bold default
   
   if (isLeak) {
-    strokeColor = 'hsl(0, 70%, 55%)'; // Red
-    strokeDasharray = '8 4';
-    strokeWidth = 2;
+    strokeColor = 'hsl(0, 70%, 55%)'; // Red - solid, no dash
+    strokeWidth = 3;
   } else if (isSelected) {
     strokeColor = 'hsl(170, 65%, 45%)'; // Teal
-    strokeWidth = 3;
+    strokeWidth = 4;
   }
 
   // Calculate midpoint for label - uses same dimensions as funnelLayout
@@ -80,17 +78,15 @@ export function CanvasConnector({
         onClick={onClick}
       />
       
-      {/* Main connector line - with animation */}
+      {/* Main connector line - BOLD SOLID with animation */}
       <path
         d={path}
         stroke={strokeColor}
         strokeWidth={strokeWidth}
         fill="none"
         strokeLinecap="round"
-        strokeDasharray={strokeDasharray === 'none' ? undefined : strokeDasharray}
         className={cn(
           "transition-all duration-200",
-          isLeak && "animate-pulse",
           !isLeak && !isSelected && "animate-connector-appear"
         )}
         style={{ pointerEvents: 'none' }}
@@ -144,7 +140,7 @@ function ArrowHead({ path, color }: { path: string; color: string }) {
   const endY = parseFloat(matches[2]);
   
   // Draw a small triangle pointing down
-  const arrowSize = 6;
+  const arrowSize = 8; // Larger arrow for bold lines
   const points = [
     `${endX},${endY}`,
     `${endX - arrowSize},${endY - arrowSize * 1.5}`,
