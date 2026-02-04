@@ -25,6 +25,8 @@ interface CanvasNodeProps {
   node: SessionNode;
   isSelected?: boolean;
   isConnectionDragging?: boolean;
+  isConnectModeActive?: boolean; // NEW: Indicates Connect Mode is on globally
+  isPendingSource?: boolean; // NEW: This node is selected as the source in Connect Mode
   onClick?: (node: SessionNode) => void;
   onDoubleClick?: (node: SessionNode) => void;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
@@ -37,6 +39,8 @@ export function CanvasNode({
   node, 
   isSelected, 
   isConnectionDragging,
+  isConnectModeActive,
+  isPendingSource,
   onClick, 
   onDoubleClick,
   onDragEnd,
@@ -215,7 +219,10 @@ export function CanvasNode({
         isDragging ? "cursor-grabbing opacity-90 shadow-level-3 z-50 scale-105" : "cursor-grab",
         !isDragging && "hover:shadow-level-2 hover:scale-[1.02] hover:-translate-y-0.5",
         isSelected && "ring-2 ring-accent ring-offset-2 ring-offset-background",
-        isConnectionDragging && "ring-2 ring-accent/50 ring-dashed",
+        isConnectionDragging && "ring-2 ring-accent/50 ring-dashed cursor-pointer",
+        // Connect Mode visuals
+        isConnectModeActive && !isPendingSource && "ring-1 ring-accent/30 animate-pulse cursor-pointer",
+        isPendingSource && "ring-2 ring-accent ring-offset-2 ring-offset-background shadow-[0_0_20px_hsl(var(--accent)/0.4)]",
         node.isLeak && "leak-pulse"
       )}
       style={{

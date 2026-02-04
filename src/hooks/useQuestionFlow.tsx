@@ -331,6 +331,27 @@ export function useQuestionFlow(sessionId?: string, industry?: Industry) {
     }
   }, [sessionId]);
 
+  // Mark fulfillment complete - skips remaining fulfillment questions and advances to reviews/metrics
+  const markFulfillmentComplete = useCallback(() => {
+    setState(prev => {
+      // Find the first question after fulfillment section (reviews or metrics)
+      const postFulfillmentIndex = activeQuestions.findIndex(q => 
+        q.section === 'metrics' || 
+        (q.section === 'fulfillment' && q.id.includes('review'))
+      );
+      
+      // If found, jump to that question; otherwise mark complete
+      const nextIndex = postFulfillmentIndex >= 0 ? postFulfillmentIndex : activeQuestions.length;
+      
+      return {
+        ...prev,
+        currentQuestionIndex: nextIndex,
+        isComplete: nextIndex >= activeQuestions.length,
+        completedSections: [...prev.completedSections, 'fulfillment'],
+      };
+    });
+  }, [activeQuestions]);
+
   // Auto-save to localStorage
   useEffect(() => {
     if (sessionId && Object.keys(state.answers).length > 0) {
@@ -361,5 +382,6 @@ export function useQuestionFlow(sessionId?: string, industry?: Industry) {
     getAnswer,
     reset,
     injectDynamicQuestions,
+    markFulfillmentComplete,
   };
 }
