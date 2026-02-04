@@ -442,6 +442,31 @@
     }
   }
 
+  /* Physics-based hover scale */
+  @keyframes hover-lift {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.015);
+    }
+    100% {
+      transform: scale(1.02);
+    }
+  }
+
+  /* Connector appear animation */
+  @keyframes connector-appear {
+    from {
+      opacity: 0;
+      stroke-dashoffset: 100;
+    }
+    to {
+      opacity: 1;
+      stroke-dashoffset: 0;
+    }
+  }
+
   .animate-fade-in {
     animation: fade-in 0.3s ease-out;
   }
@@ -471,8 +496,17 @@
   }
 
   .animate-path-draw {
-    animation: path-draw 0.3s ease-out forwards;
+    animation: path-draw 0.4s ease-out forwards;
     stroke-dasharray: 1000;
+  }
+
+  .animate-connector-appear {
+    animation: connector-appear 0.3s ease-out forwards;
+    stroke-dasharray: 100;
+  }
+
+  .animate-hover-lift {
+    animation: hover-lift 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
 
   /* Enter/Exit combined */

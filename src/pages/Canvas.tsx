@@ -747,12 +747,12 @@ export default function Canvas() {
               }}
             />
 
-            {/* Funnel Level Labels - using unique labels per level */}
-            <div className="absolute left-4 top-0 bottom-0 w-32 pointer-events-none">
+            {/* Funnel Level Labels - Phase 1: Enhanced legibility */}
+            <div className="absolute left-4 top-0 bottom-0 w-36 pointer-events-none">
               {FUNNEL_LEVELS.map((level) => (
                 <div
                   key={level.level}
-                  className="absolute text-xs text-muted-foreground/50 font-medium uppercase tracking-wider"
+                  className="absolute text-[11px] text-muted-foreground/70 font-medium uppercase tracking-normal"
                   style={{ top: level.yOffset + 20 }}
                 >
                   {FUNNEL_LEVEL_LABELS[level.level] || level.name.replace(/-/g, ' ')}
@@ -886,8 +886,8 @@ export default function Canvas() {
             </div>
           )}
 
-          {/* Canvas Action Bar */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-xl bg-card border border-border shadow-lg">
+          {/* Canvas Action Bar - Phase 1: Improved spacing */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-3 py-2 rounded-xl bg-card border border-border shadow-level-2">
             {/* Connect Mode Toggle */}
             <div className="flex items-center gap-2 px-2">
               <Switch

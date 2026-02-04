@@ -72,8 +72,8 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6 scrollbar-thin">
-          {/* Stats Overview */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          {/* Stats Overview - Phase 1: Increased breathing room */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-10">
             <Card className="card-hover">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -152,9 +152,9 @@ export default function Dashboard() {
                   Begin mapping your prospect's business process and quantify revenue leakage in real-time.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-7">
                 {/* Client Name Input */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <Label htmlFor="clientName" className="text-sm font-medium">
                     Client Name <span className="text-destructive">*</span>
                   </Label>
@@ -168,7 +168,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Industry Select */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <Label htmlFor="industry" className="text-sm font-medium">
                     Industry <span className="text-muted-foreground">(Optional)</span>
                   </Label>
