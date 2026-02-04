@@ -1,170 +1,393 @@
+# ALIGN Automation Builder - Implementation Plan
 
-## What I understand you’re asking for (in plain English)
+## Current Phase: Canvas & Question Engine Enhancements
 
-You have 3 connected problems you want fixed, without changing anything unrelated:
-
-1) **The app must ask the intake-mapping question for *every* lead source you selected**  
-   Example: If you selected 4 lead sources (Meta Ads, SEO, WebMD Directory, Patient Referrals), you should get 4 follow-up questions:
-   - “Which intake methods apply to Meta Ads?”
-   - “Which intake methods apply to SEO?”
-   - “Which intake methods apply to WebMD Directory?”
-   - “Which intake methods apply to Patient Referrals?”  
-   Right now it’s only asking for some of them (skipping directory/referrals), which breaks the map.
-
-2) **When you answer a mapping question, the connection should actually draw correctly (and consistently)**
-   Example: You selected for SEO → “Email Intake” + “Phone Calls”, but the arrow(s) don’t show up (or only one shows). That means the “connect” updates are getting lost or overwritten.
-
-3) **As a safety net, you must be able to manually connect nodes by dragging an arrow (not only the current click-to-connect toggle)**  
-   Even if the question flow misses something, you should always be able to drag a connector from a Lead Source node to a specific Intake node.  
-   (You also mentioned zoom—zoom controls already exist in the canvas action bar. We will not modify zoom unless needed for the drag-connector UI to work correctly with zoom.)
-
-This is all specifically about:
-- dynamic question generation (ensuring mapping questions appear for every selected lead source),
-- reliable connection creation (ensuring arrows are saved properly),
-- manual drag-to-connect as fallback.
-
-No other features will be touched.
+### Overview
+This plan addresses three critical improvements:
+1. **Zoom Alignment Stability** - Fix zoom so nodes/connectors stay aligned at any zoom level
+2. **Sidebar Label Accuracy** - Correct funnel level names to reflect actual stages
+3. **AI-Driven Dynamic Questions** - Implement intelligent question flow for fulfillment mapping
 
 ---
 
-## Why the missing questions are happening (root cause)
+## Task 1: Zoom Alignment Stability
 
-### A) Mapping questions are being injected, but the “next question” logic is using the wrong list
-In `src/hooks/useQuestionFlow.tsx`, the UI uses a combined list that correctly inserts **lead-handling dynamic questions** right after `q_intake_methods`.
+### Problem
+Current `transform: scale()` with `transform-origin: top left` causes content to drift during zoom. Nodes and connectors become misaligned.
 
-But inside `answerQuestion`, the code that recalculates “what’s the next question” rebuilds a simplified list that:
-- only accounts for **lead-sources dynamic questions**, not **lead-handling** ones,
-- inserts dynamic questions at the wrong place,
-- so the flow can jump forward and never present mapping questions for all lead sources.
+### Solution
+Switch to center-based viewport scaling with proper offset calculations.
 
-Result: You selected 4 lead sources, but only 2 mapping questions show up.
+### Implementation Steps
+
+#### 1.1 Create `useCanvasViewport` Hook (NEW FILE)
+**File:** `src/hooks/useCanvasViewport.tsx`
+
+```typescript
+interface ViewportState {
+  zoom: number;           // 0.25 to 2.0
+  offset: { x: number; y: number };  // pan offset
+}
+
+// Exports:
+// - zoom, offset state
+// - zoomIn(), zoomOut(), resetView(), fitToContent(nodes)
+// - handleWheel(e) - zoom toward cursor
+// - handlePanStart/Move/End - background drag
+// - screenToCanvas(point) - convert screen coords to canvas coords
+// - canvasToScreen(point) - convert canvas coords to screen coords
+```
+
+#### 1.2 Refactor Canvas Zoom Logic
+**File:** `src/pages/Canvas.tsx`
+
+- [ ] Replace inline zoom/pan state with `useCanvasViewport` hook
+- [ ] Update transform: `transform: scale(${zoom}) translate(${offset.x}px, ${offset.y}px)`
+- [ ] Use `transform-origin: center center` for stable scaling
+- [ ] Update wheel handler to zoom toward cursor position
+- [ ] Add smooth CSS transitions: `transition: transform 0.1s ease-out`
+
+#### 1.3 Update Zoom Controls UI
+- [ ] Display zoom percentage (e.g., "100%")
+- [ ] Add "Fit to Content" button - auto-zoom to show all nodes
+- [ ] Add "Reset View" button (100% zoom, centered)
+- [ ] Keyboard shortcuts: Ctrl+0 = reset, Ctrl+= zoom in, Ctrl+- zoom out
+
+#### 1.4 Verify Connector Paths
+**File:** `src/components/canvas/CanvasConnector.tsx`
+
+- [ ] Ensure paths are calculated in canvas space (scale-independent)
+- [ ] Connectors inherit parent transform, no manual scaling needed
+
+### Success Criteria
+- [ ] Zooming keeps viewport center stable
+- [ ] Connectors scale correctly with nodes
+- [ ] Zoom controls show current percentage
+- [ ] "Fit to Content" shows all nodes in view
 
 ---
 
-## Why SEO → Email Intake isn’t connecting (root cause)
+## Task 2: Sidebar Label Accuracy
 
-### B) Multiple rapid connection updates can overwrite each other
-When you answer a mapping question and select multiple intakes, the code fires multiple “create connection” events back-to-back.
+### Problem
+`FUNNEL_LEVELS` in `funnelLayout.ts` duplicates "conversion" for levels 3, 4, 5. Sidebar shows wrong stage names.
 
-But `updateNode` in `src/hooks/useSession.tsx` currently depends on a potentially stale `currentSession` snapshot, so if two updates happen quickly, the last one can overwrite the previous one (lost connection).
+### Solution
+Update level names to reflect the actual 8-level funnel structure.
 
-Result: The UI may show the mapping answer (“Email Intake, Phone Calls”) but only one (or none) of those lines appears.
+### Implementation Steps
+
+#### 2.1 Update Funnel Level Definitions
+**File:** `src/utils/funnelLayout.ts`
+
+Current → Fixed:
+| Level | Current Name | New Name |
+|-------|--------------|----------|
+| 0 | top-of-funnel | lead-sources |
+| 1 | intake | intake |
+| 2 | qualification | qualification |
+| 3 | conversion | qualified-paths |
+| 4 | conversion | handoffs |
+| 5 | conversion | conversion-events |
+| 6 | close | close |
+| 7 | fulfillment | fulfillment |
+
+#### 2.2 Update `getLevelName()` Function
+```typescript
+export function getLevelName(level: number): string {
+  const names: Record<number, string> = {
+    0: 'Lead Sources',
+    1: 'Lead Intake',
+    2: 'Qualification',
+    3: 'Qualified Paths',
+    4: 'Handoffs',
+    5: 'Conversion Events',
+    6: 'Close',
+    7: 'Fulfillment & Reviews',
+  };
+  return names[level] || 'Custom';
+}
+```
+
+### Success Criteria
+- [ ] Each funnel level has a unique, descriptive name
+- [ ] Sidebar reflects actual workflow stages
+- [ ] No duplicate labels in UI
 
 ---
 
-## Implementation plan (minimal, only what relates to this issue)
+## Task 3: AI-Driven Dynamic Questions for Fulfillment
 
-### 1) Fix dynamic question progression so mapping questions never get skipped
+### Problem
+Current question flow is static. Fulfillment requires context-aware follow-up questions based on what the business actually does after closing a sale.
+
+### Solution
+Implement a hybrid system:
+- **Rule-based core flow** for standard funnel stages
+- **AI-generated questions** for fulfillment stage based on previous answers
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Question Engine                          │
+├─────────────────────────────────────────────────────────────┤
+│  Static Questions (existing QUESTIONS array)                │
+│  ├─ Goals & Context                                         │
+│  ├─ Lead Sources                                            │
+│  ├─ Lead Handling                                           │
+│  ├─ Qualification                                           │
+│  ├─ Conversion Events                                       │
+│  └─ Close                                                   │
+├─────────────────────────────────────────────────────────────┤
+│  AI Injection Point (after Close stage)                     │
+│  ├─ Trigger: User completes close-related questions         │
+│  ├─ Input: Industry + all previous answers + existing nodes │
+│  ├─ AI Prompt: "What happens after the sale closes?"        │
+│  └─ Output: 2-4 contextual fulfillment questions            │
+├─────────────────────────────────────────────────────────────┤
+│  Dynamic Question Injection                                  │
+│  └─ injectDynamicQuestions() adds AI questions to flow      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Steps
+
+#### 3.1 Create Edge Function for AI Question Generation
+**File:** `supabase/functions/generate-questions/index.ts`
+
+**Endpoint:** POST `/generate-questions`
+
+**Request:**
+```typescript
+{
+  industry: string;
+  currentStage: 'fulfillment' | 'review' | 'custom';
+  previousAnswers: Record<string, { value: any }>;
+  existingNodes: { type: string; label: string }[];
+}
+```
+
+**Response:**
+```typescript
+{
+  questions: Array<{
+    id: string;          // e.g., "ai_fulfill_1"
+    question: string;
+    type: 'text' | 'select' | 'multi-select' | 'number';
+    options?: string[];
+    section: 'fulfillment';
+    hint?: string;
+    followUpNodeType?: NodeType;
+  }>;
+}
+```
+
+**AI Prompt Template:**
+```
+You are helping map a {industry} business's fulfillment process.
+
+The business has this workflow so far:
+- Lead sources: {leadSources}
+- Intake methods: {intakeMethods}
+- Qualification criteria: {qualificationCriteria}
+- Close process: {closeProcess}
+
+Generate 2-4 questions to understand what happens AFTER the sale closes.
+Focus on:
+1. Delivery/fulfillment steps (who does what, in what order)
+2. Handoffs between people/systems
+3. Customer communication touchpoints
+4. Quality checks or follow-up procedures
+
+Return JSON array of questions. Each question should have:
+- id: unique string starting with "ai_fulfill_"
+- question: the question text
+- type: "text", "select", "multi-select", or "number"
+- options: array of choices (for select/multi-select)
+- hint: optional helper text
+- followUpNodeType: suggested node type for canvas
+```
+
+#### 3.2 Create `useAIQuestions` Hook
+**File:** `src/hooks/useAIQuestions.tsx`
+
+```typescript
+export function useAIQuestions() {
+  // State
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Generate questions for fulfillment stage
+  const generateFulfillmentQuestions = async (context: AIQuestionContext) => {
+    // Call edge function
+    // Cache results by session
+    // Return questions
+  };
+
+  // Check if we should trigger AI generation
+  const shouldGenerateAI = (currentQuestionId: string, answers: QuestionAnswers) => {
+    // Return true when user completes close-stage questions
+  };
+
+  return {
+    isGenerating,
+    generatedQuestions,
+    error,
+    generateFulfillmentQuestions,
+    shouldGenerateAI,
+  };
+}
+```
+
+#### 3.3 Update Question Types
+**File:** `src/types/questions.ts`
+
+Add to `Question` interface:
+```typescript
+interface Question {
+  id: string;
+  section: QuestionSection;
+  question: string;
+  type: 'text' | 'select' | 'multi-select' | 'number' | 'boolean';
+  options?: string[];
+  required?: boolean;
+  hint?: string;
+  skipCondition?: (answers: QuestionAnswers) => boolean;
+  optionKey?: keyof IndustryOptions;
+  isAIGenerated?: boolean;
+  aiContext?: string;
+}
+```
+
+#### 3.4 Integrate with Question Flow
 **File:** `src/hooks/useQuestionFlow.tsx`
 
-**Change:**
-- Refactor the “rebuild active questions” logic inside `answerQuestion` to mirror the same insertion rules used by `allQuestions`:
-  - Insert `lead-handling` dynamic questions after `q_intake_methods`
-  - Insert `metrics` dynamic questions at the start of the metrics section
-  - Apply skip conditions based on the updated answers
+- [ ] Import and use `useAIQuestions` hook
+- [ ] After close-stage questions complete, call `generateFulfillmentQuestions()`
+- [ ] Inject generated questions via `injectDynamicQuestions()`
+- [ ] Show loading state while AI generates
 
-**Also add:**
-- Dynamic-question de-duping by `id` inside `injectDynamicQuestions` so we never double-inject and confuse indexes.
+#### 3.5 Update Question Panel UI
+**File:** `src/components/canvas/QuestionPanel.tsx`
 
-**Outcome:**
-- If you select 4 lead sources, you will always get 4 mapping questions—no more missing WebMD/referrals questions.
+- [ ] Show "Analyzing your workflow..." loading state during AI generation
+- [ ] Style AI-generated questions with subtle indicator (sparkle icon)
+- [ ] Add "Generate more questions" button for manual AI trigger
+- [ ] Graceful error handling if AI fails
 
----
+#### 3.6 Update Config
+**File:** `supabase/config.toml`
 
-### 2) Make node updates “safe under rapid-fire updates” (prevents lost connections)
-**File:** `src/hooks/useSession.tsx`
+```toml
+[functions.generate-questions]
+verify_jwt = false
+```
 
-**Change:**
-- Rewrite `updateNode` to use a functional state update (`setCurrentSession(prev => ...)`) and update sessions inside that same functional path.  
-This matches the reliability requirement you called out earlier: “don’t overwrite state during rapid successive operations.”
+### Fallback Behavior
+If AI generation fails:
+1. Show error toast
+2. Fall back to generic fulfillment questions:
+   - "What happens immediately after the sale closes?"
+   - "Who is responsible for delivering the service?"
+   - "How do you communicate with the customer post-sale?"
+   - "Do you have a formal handoff process?"
 
-**Outcome:**
-- When a mapping question creates multiple connections (SEO → Email Intake AND SEO → Phone Calls), both connections persist and render.
-
----
-
-### 3) Ensure mapping connections are stored on the lead source node (and always render)
-**Files:**  
-- `src/pages/Canvas.tsx` (confirm / tighten connection handler)
-- (Potentially) `src/components/canvas/CanvasConnector.tsx` (only if we find rendering is still relying on deprecated `sourceConnections`)
-
-**Change (Canvas.tsx):**
-- Keep the existing `source-to-intake-connection` handler, but make it robust:
-  - Verify it can find both nodes reliably by `sourceId`
-  - If not found, log a warning with the `leadSourceId`/`intakeId` (for debugging)
-- Ensure it appends to `leadSourceNode.connections` without wiping existing ones (the functional `updateNode` fix in Step 2 is what makes this reliable).
-
-**Outcome:**
-- Connections are stored in one consistent place (`connections`) and render as expected.
+### Success Criteria
+- [ ] After close questions, AI generates 2-4 contextual fulfillment questions
+- [ ] Questions are relevant to the industry and previous answers
+- [ ] Loading state shows while AI generates
+- [ ] Graceful fallback if AI fails
+- [ ] Generated questions integrate into normal flow
 
 ---
 
-### 4) Add “drag-to-connect” as a true fallback (no more “I can’t draw lines”)
-Right now, manual connections require using the bottom “Connect” toggle and clicking two nodes. You specifically want drag-from-node-to-node.
+## Implementation Order
 
-**Files:**  
-- `src/components/canvas/CanvasNode.tsx`
-- `src/pages/Canvas.tsx`
+### Phase 1: Quick Wins (Do First)
+1. **Task 2: Sidebar Labels** - 15 min, improves clarity immediately
+2. **Task 1: Zoom Alignment** - 1-2 hours, critical for usability
 
-**UI behavior:**
-- Each node shows a small “connector handle” (e.g., a small circle on the right edge) on hover/selection.
-- You can click-and-drag from that handle to another node.
-- While dragging, a preview line follows your cursor.
-- On mouse-up over a target node, we create the connection.
-
-**Implementation details (kept minimal):**
-- Add optional props to `CanvasNode`:
-  - `onStartConnectionDrag(fromNodeId, startPoint)`
-  - `onCompleteConnectionDrag(toNodeId)`
-  - `isConnectionDragging` / highlight if it’s a valid drop target
-- In `Canvas.tsx`, track:
-  - `dragConnectingFromId`
-  - `dragCursorPosition`
-  - render an overlay SVG path for the preview line
-- On drop:
-  - call `updateNode(fromId, { connections: [...existing, toId] })` (same logic as Connect Mode)
-- Respect zoom:
-  - Convert mouse coordinates to canvas coordinates factoring `zoomLevel` and scroll offsets so the line lands where your cursor is.
-
-**Outcome:**
-- Even if questions fail or you need a custom mapping, you can always connect Lead Source → the correct Intake by dragging.
+### Phase 2: Intelligence (Do Second)
+3. **Task 3: AI Questions** - 2-3 hours, requires edge function + hook + UI
 
 ---
 
-## Guardrails (your “don’t break anything else” requirement)
-- No changes to auth, dashboard, metrics, PDF, AI readiness, or unrelated question sections.
-- No new dependencies.
-- Changes are limited to:
-  - question flow indexing / dynamic insertion
-  - safe session updates to prevent lost connections
-  - connection UI fallback (drag-to-connect) implemented using existing patterns.
+## Files Summary
+
+### New Files
+- `src/hooks/useCanvasViewport.tsx` - Viewport zoom/pan state management
+- `src/hooks/useAIQuestions.tsx` - AI question generation hook
+- `supabase/functions/generate-questions/index.ts` - AI question edge function
+
+### Modified Files
+- `src/utils/funnelLayout.ts` - Fix level names
+- `src/pages/Canvas.tsx` - Use viewport hook, update zoom UI
+- `src/types/questions.ts` - Add `isAIGenerated` field
+- `src/hooks/useQuestionFlow.tsx` - Integrate AI questions
+- `src/components/canvas/QuestionPanel.tsx` - Loading states, AI indicators
+- `supabase/config.toml` - Register new function
 
 ---
 
-## Testing checklist (end-to-end)
-1) **Dynamic mapping questions**
-   - Start a fresh session
-   - Select 4 lead sources (Meta Ads, SEO, WebMD Directory, Patient Referrals)
-   - Select multiple intake methods (including Email Intake)
-   - Confirm you are asked mapping questions for **all 4 lead sources**.
+## Technical Notes
 
-2) **Connection accuracy**
-   - On “Which intake methods apply to SEO?” select **Email Intake** + **Phone Calls**
-   - Confirm **two arrows** appear from SEO → Email Intake and SEO → Phone Calls (not just one).
+### Zoom Math (Center-Based)
+```typescript
+// Zoom toward cursor position
+const zoomToPoint = (
+  cursorPos: { x: number; y: number },
+  newZoom: number,
+  currentZoom: number,
+  currentOffset: { x: number; y: number }
+) => {
+  const zoomRatio = newZoom / currentZoom;
+  return {
+    x: cursorPos.x - (cursorPos.x - currentOffset.x) * zoomRatio,
+    y: cursorPos.y - (cursorPos.y - currentOffset.y) * zoomRatio,
+  };
+};
+```
 
-3) **Manual fallback**
-   - Without using question flow, drag from SEO node handle → Email Intake node
-   - Confirm the arrow appears and persists after refresh.
+### Coordinate Conversion
+```typescript
+// Screen coords → Canvas coords (for drag-drop, connections)
+const screenToCanvas = (screenX: number, screenY: number) => ({
+  x: (screenX - offset.x) / zoom,
+  y: (screenY - offset.y) / zoom,
+});
 
-4) **Zoom compatibility**
-   - Zoom in/out
-   - Drag-connect still drops correctly onto the intended node.
+// Canvas coords → Screen coords (for rendering)
+const canvasToScreen = (canvasX: number, canvasY: number) => ({
+  x: canvasX * zoom + offset.x,
+  y: canvasY * zoom + offset.y,
+});
+```
 
 ---
 
-## Files expected to change
-- `src/hooks/useQuestionFlow.tsx` (fix dynamic question progression + de-dupe)
-- `src/hooks/useSession.tsx` (functional updateNode to prevent overwritten connections)
-- `src/pages/Canvas.tsx` (coordinate-safe connection creation + drag-to-connect controller)
-- `src/components/canvas/CanvasNode.tsx` (connector handle UI + drag events)
+## Status Tracking
 
+- [ ] Task 1: Zoom Alignment - NOT STARTED
+- [ ] Task 2: Sidebar Labels - NOT STARTED
+- [ ] Task 3: AI Dynamic Questions - NOT STARTED
+
+---
+
+## Previous Plan (Completed)
+<details>
+<summary>Click to expand previous plan</summary>
+
+### Completed Tasks
+- ✅ Dynamic mapping questions for lead sources
+- ✅ Connection accuracy (functional updateNode)
+- ✅ Connect mode toggle for manual connections
+- ✅ Qualification fan-out pattern
+- ✅ Canvas navigation (zoom, pan)
+
+</details>
+
+---
+
+Last Updated: 2026-02-04
