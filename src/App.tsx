@@ -7,6 +7,13 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { SessionProvider } from "@/hooks/useSession";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
+import Pipeline from "./pages/Pipeline";
+import Content from "./pages/Content";
+import Websites from "./pages/Websites";
+import Leads from "./pages/Leads";
+import AICommand from "./pages/AICommand";
+import Finances from "./pages/Finances";
+import SettingsPage from "./pages/Settings";
 import Canvas from "./pages/Canvas";
 import UsersSettings from "./pages/settings/UsersSettings";
 import Auth from "./pages/Auth";
@@ -24,31 +31,16 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
-              <Route 
-                path="/" 
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/canvas/:sessionId" 
-                element={
-                  <ProtectedRoute>
-                    <Canvas />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/settings/users" 
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <UsersSettings />
-                  </ProtectedRoute>
-                } 
-              />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
+              <Route path="/content" element={<ProtectedRoute><Content /></ProtectedRoute>} />
+              <Route path="/websites" element={<ProtectedRoute><Websites /></ProtectedRoute>} />
+              <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
+              <Route path="/ai" element={<ProtectedRoute><AICommand /></ProtectedRoute>} />
+              <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/canvas/:sessionId" element={<ProtectedRoute><Canvas /></ProtectedRoute>} />
+              <Route path="/settings/users" element={<ProtectedRoute requireAdmin><UsersSettings /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
