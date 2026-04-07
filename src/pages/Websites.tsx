@@ -1,20 +1,32 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { useClientContext } from '@/hooks/useClientContext';
 import { cn } from '@/lib/utils';
 import { Sparkles, Edit3, Eye, ExternalLink, Globe } from 'lucide-react';
 
 const sites = [
-  { client: 'Acme Pressure Washing', domain: 'acmepressurewashing.com', status: 'live', updated: 'Apr 4', mrr: 97 },
-  { client: 'Bayou Landscaping', domain: 'bayoulandscaping.com', status: 'needs_update', updated: 'Mar 28', mrr: 97 },
-  { client: 'Magnolia Concrete', domain: 'magnoliaconcrete.com', status: 'live', updated: 'Apr 1', mrr: 97 },
-  { client: 'Tidewater Lawn Care', domain: 'tidewaterlawncare.com', status: 'draft', updated: 'Apr 5', mrr: 0 },
-  { client: 'Pontchartrain Plumbing', domain: 'pontplumbing.com', status: 'draft', updated: 'Apr 3', mrr: 0 },
+  { client: 'DigitalDNA', domain: 'digitaldna.agency', status: 'live', updated: 'Apr 4', mrr: 0, internal: true },
+  { client: 'Acme Pressure Washing', domain: 'acmepressurewashing.com', status: 'live', updated: 'Apr 4', mrr: 97, internal: false },
+  { client: 'Bayou Landscaping', domain: 'bayoulandscaping.com', status: 'needs_update', updated: 'Mar 28', mrr: 97, internal: false },
+  { client: 'Magnolia Concrete', domain: 'magnoliaconcrete.com', status: 'live', updated: 'Apr 1', mrr: 97, internal: false },
+  { client: 'Tidewater Lawn Care', domain: 'tidewaterlawncare.com', status: 'draft', updated: 'Apr 5', mrr: 0, internal: false },
+  { client: 'Pontchartrain Plumbing', domain: 'pontplumbing.com', status: 'draft', updated: 'Apr 3', mrr: 0, internal: false },
 ];
 
 const templates = ['Pressure Washing', 'Landscaping', 'Roofing', 'HVAC', 'Painting', 'Plumbing', 'Fencing', 'Pool Services'];
 
 export default function Websites() {
+  const { selectedClient } = useClientContext();
+
+  const filteredSites = sites.filter(s => {
+    if (!selectedClient) return true;
+    if (selectedClient.is_internal) return s.internal;
+    return s.client === selectedClient.business_name;
+  });
+
+  const showClientCol = !selectedClient;
+
   return (
     <AppLayout>
       <header className="flex h-14 items-center justify-between border-b border-border px-6 shrink-0">
@@ -26,14 +38,13 @@ export default function Websites() {
       </header>
 
       <div className="flex-1 overflow-auto p-6 space-y-6 scrollbar-thin">
-        {/* Sites Table */}
         <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="grid grid-cols-[2fr_2fr_100px_80px_60px_200px] px-4 py-2.5 border-b border-border text-[11px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
-            <span>Client</span><span>Domain</span><span>Status</span><span>Updated</span><span>MRR</span><span>Actions</span>
+          <div className={cn('grid px-4 py-2.5 border-b border-border text-[11px] font-mono font-semibold text-muted-foreground uppercase tracking-wider', showClientCol ? 'grid-cols-[2fr_2fr_100px_80px_60px_200px]' : 'grid-cols-[2fr_100px_80px_60px_200px]')}>
+            {showClientCol && <span>Client</span>}<span>Domain</span><span>Status</span><span>Updated</span><span>MRR</span><span>Actions</span>
           </div>
-          {sites.map((s, i) => (
-            <div key={i} className={cn('grid grid-cols-[2fr_2fr_100px_80px_60px_200px] px-4 py-3 items-center text-[13px]', i % 2 === 0 ? 'bg-card' : 'bg-background')}>
-              <span className="font-medium">{s.client}</span>
+          {filteredSites.map((s, i) => (
+            <div key={i} className={cn('grid px-4 py-3 items-center text-[13px]', showClientCol ? 'grid-cols-[2fr_2fr_100px_80px_60px_200px]' : 'grid-cols-[2fr_100px_80px_60px_200px]', i % 2 === 0 ? 'bg-card' : 'bg-background')}>
+              {showClientCol && <span className="font-medium">{s.client}{s.internal && <span className="ml-1.5 text-[10px] text-primary font-mono">(internal)</span>}</span>}
               <span className="text-[hsl(210,80%,55%)]">{s.domain}</span>
               <StatusBadge status={s.status} />
               <span className="text-xs text-muted-foreground">{s.updated}</span>
@@ -47,7 +58,6 @@ export default function Websites() {
           ))}
         </div>
 
-        {/* Templates */}
         <div className="grid grid-cols-4 gap-3">
           {templates.map(t => (
             <div key={t} className="bg-card border border-border rounded-lg p-4 cursor-pointer text-center hover:border-accent/40 transition-colors">
