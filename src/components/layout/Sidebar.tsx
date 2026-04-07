@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Shield,
   Workflow,
+  Zap,
 } from 'lucide-react';
 
 const navItems = [
