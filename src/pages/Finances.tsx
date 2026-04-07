@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { useClientContext } from '@/hooks/useClientContext';
+import { AddTransactionDialog } from '@/components/forms/AddTransactionDialog';
 import { cn } from '@/lib/utils';
 import { Plus, Upload, DollarSign, Receipt, FileText, BarChart3 } from 'lucide-react';
 import {
@@ -37,6 +38,7 @@ const revenueTrend = [
 
 export default function Finances() {
   const [subTab, setSubTab] = useState('overview');
+  const [showAddTx, setShowAddTx] = useState(false);
   const tabs = ['overview', 'revenue', 'expenses', 'bank', 'invoices', 'reports'];
   const { selectedClient } = useClientContext();
 
@@ -56,7 +58,7 @@ export default function Finances() {
         <h1 className="text-lg font-bold">Finances</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="gap-1 text-xs"><Upload className="h-3 w-3" /> Upload Statement</Button>
-          <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Create Invoice</Button>
+          <Button size="sm" className="gap-1.5" onClick={() => setShowAddTx(true)}><Plus className="h-3.5 w-3.5" /> Log Transaction</Button>
         </div>
       </header>
 
@@ -137,6 +139,8 @@ export default function Finances() {
           />
         )}
       </div>
+
+      <AddTransactionDialog open={showAddTx} onOpenChange={setShowAddTx} />
     </AppLayout>
   );
 }
