@@ -26,6 +26,7 @@ import WebhookLog from "./pages/clients/WebhookLog";
 import ClientHealth from "./pages/clients/ClientHealth";
 import CostLedger from "./pages/clients/CostLedger";
 import TemplateLibrary from "./pages/clients/TemplateLibrary";
+import OnboardingPipeline from "./pages/clients/OnboardingPipeline";
 
 // Client Portal pages
 import PortalDashboard from "./pages/portal/PortalDashboard";
@@ -63,7 +64,7 @@ const App = () => (
               {/* Clients hub — nested sub-pages for health, onboarding, costs, templates */}
               <Route path="/clients" element={<ProtectedRoute requireStaff><Pipeline /></ProtectedRoute>} />
               <Route path="/clients/health" element={<ProtectedRoute requireStaff><ClientHealth /></ProtectedRoute>} />
-              <Route path="/clients/onboarding" element={<ProtectedRoute requireStaff><Dashboard /></ProtectedRoute>} />
+              <Route path="/clients/onboarding" element={<ProtectedRoute requireStaff><OnboardingPipeline /></ProtectedRoute>} />
               <Route path="/clients/costs" element={<ProtectedRoute requireStaff><CostLedger /></ProtectedRoute>} />
               <Route path="/clients/templates" element={<ProtectedRoute requireStaff><TemplateLibrary /></ProtectedRoute>} />
               <Route path="/clients/webhooks" element={<ProtectedRoute requireStaff><WebhookLog /></ProtectedRoute>} />
