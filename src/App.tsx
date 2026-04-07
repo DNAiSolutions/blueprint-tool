@@ -14,6 +14,7 @@ import Websites from "./pages/Websites";
 import Leads from "./pages/Leads";
 import AICommand from "./pages/AICommand";
 import Finances from "./pages/Finances";
+import Automations from "./pages/Automations";
 import SettingsPage from "./pages/Settings";
 import Canvas from "./pages/Canvas";
 import UsersSettings from "./pages/settings/UsersSettings";
