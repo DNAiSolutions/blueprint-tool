@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 interface EmptyStateProps {
   icon: LucideIcon;
   title: string;
-  description: string;
+  description?: string;
   actionLabel?: string;
   onAction?: () => void;
 }
