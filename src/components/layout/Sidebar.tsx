@@ -26,6 +26,7 @@ const navItems = [
   { id: 'canvas', label: 'Automation Builder', icon: Workflow, href: '/canvas' },
   { id: 'content', label: 'Content', icon: Film, href: '/content' },
   { id: 'websites', label: 'Websites', icon: Globe, href: '/websites' },
+  { id: 'automations', label: 'Automations', icon: Zap, href: '/automations' },
   { id: 'leads', label: 'Leads', icon: Radio, href: '/leads' },
   { id: 'ai', label: 'AI Command', icon: Bot, href: '/ai' },
   { id: 'finances', label: 'Finances', icon: DollarSign, href: '/finances' },
