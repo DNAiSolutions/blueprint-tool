@@ -7,32 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
-  Users,
-  FileText,
-  DollarSign,
-  Radio,
-  Check,
-  Bot,
-  ArrowRight,
-  Plus,
-  Bell,
-  Search,
-  Play,
-  Copy,
-  Image,
-  TrendingUp,
-  TrendingDown,
+  Users, FileText, DollarSign, Radio, Check, Bot, ArrowRight, Plus, Bell, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Mock data for initial display
 const mockTasks = [
   { id: 't1', desc: 'Render 5 HeyGen videos for Acme PW', client: 'Acme Pressure Washing', module: 'Content', due: 'Today', done: false },
   { id: 't2', desc: 'Deploy website v2 for Bayou Landscaping', client: 'Bayou Landscaping', module: 'Websites', due: 'Today', done: false },
@@ -53,12 +32,9 @@ const contentCalendar: Record<string, { type: string; title: string }[]> = {
 };
 
 const revenueTrend = [
-  { month: 'Nov', revenue: 4200 },
-  { month: 'Dec', revenue: 6800 },
-  { month: 'Jan', revenue: 9100 },
-  { month: 'Feb', revenue: 11400 },
-  { month: 'Mar', revenue: 14200 },
-  { month: 'Apr', revenue: 16280 },
+  { month: 'Nov', revenue: 4200 }, { month: 'Dec', revenue: 6800 },
+  { month: 'Jan', revenue: 9100 }, { month: 'Feb', revenue: 11400 },
+  { month: 'Mar', revenue: 14200 }, { month: 'Apr', revenue: 16280 },
 ];
 
 const mockAILogs = [
@@ -70,12 +46,9 @@ const mockAILogs = [
 ];
 
 const stages = [
-  { label: 'Leads', key: 'leads' },
-  { label: 'Audit', key: 'audit' },
-  { label: 'Strategy', key: 'strategy' },
-  { label: 'Build', key: 'build' },
-  { label: 'Produce', key: 'produce' },
-  { label: 'Live', key: 'live' },
+  { label: 'Leads', key: 'leads' }, { label: 'Audit', key: 'audit' },
+  { label: 'Strategy', key: 'strategy' }, { label: 'Build', key: 'build' },
+  { label: 'Produce', key: 'produce' }, { label: 'Live', key: 'live' },
 ];
 
 const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -98,7 +71,7 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <header className="flex h-14 items-center justify-between border-b border-border px-6 shrink-0">
+      <header className="flex h-14 items-center justify-between px-6 shrink-0">
         <h1 className="text-lg font-bold">Command Center</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs"><Bell className="h-3.5 w-3.5" /> 3</Button>
@@ -117,20 +90,19 @@ export default function Dashboard() {
 
         {/* Tasks + Calendar */}
         <div className="grid grid-cols-5 gap-4">
-          {/* Today's Tasks */}
-          <div className="col-span-3 rounded-lg border border-border bg-card p-4">
+          <div className="col-span-3 rounded-lg bg-card p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold">Today's Tasks</span>
               <Button variant="outline" size="sm" className="gap-1 text-xs h-7"><Plus className="h-3 w-3" /> Add</Button>
             </div>
             <div className="space-y-0">
               {mockTasks.map((t) => (
-                <div key={t.id} className="flex items-center gap-3 py-2.5 border-b border-border/50 cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => navigate(`/${t.module.toLowerCase()}`)}>
+                <div key={t.id} className="flex items-center gap-3 py-2.5 border-b border-[hsl(var(--ghost-border)/0.1)] cursor-pointer hover:bg-[hsl(var(--surface-high))] transition-colors rounded" onClick={() => navigate(`/${t.module.toLowerCase()}`)}>
                   <div className={cn(
                     'w-[18px] h-[18px] rounded border-2 flex items-center justify-center shrink-0',
-                    t.done ? 'border-accent bg-accent' : 'border-border'
+                    t.done ? 'border-primary bg-primary' : 'border-muted-foreground/30'
                   )}>
-                    {t.done && <Check className="h-3 w-3 text-accent-foreground" />}
+                    {t.done && <Check className="h-3 w-3 text-primary-foreground" />}
                   </div>
                   <span className={cn('flex-1 text-[13px]', t.done && 'line-through text-muted-foreground')}>{t.desc}</span>
                   <span className="text-xs text-muted-foreground">{t.client}</span>
@@ -141,18 +113,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Content Calendar */}
-          <div className="col-span-2 rounded-lg border border-border bg-card p-4">
+          <div className="col-span-2 rounded-lg bg-card p-4">
             <span className="text-sm font-semibold block mb-3">Content Calendar — This Week</span>
             <div className="flex gap-0.5">
               {weekDays.map((d) => (
                 <div key={d} className="flex-1 text-center">
-                  <div className={cn('text-[10px] font-semibold uppercase mb-2', d === 'Mon' ? 'text-accent' : 'text-muted-foreground')}>{d}</div>
+                  <div className={cn('text-[10px] font-semibold uppercase mb-2', d === 'Mon' ? 'text-primary' : 'text-muted-foreground')}>{d}</div>
                   <div className="flex flex-col gap-1 items-center">
                     {(contentCalendar[d] || []).map((item, i) => (
-                      <div key={i} className="w-full px-1 py-0.5 rounded bg-muted/40 text-[9px] text-muted-foreground text-center">
+                      <div key={i} className="w-full px-1 py-0.5 rounded bg-[hsl(var(--surface-high))] text-[9px] text-muted-foreground text-center">
                         <span className={cn(
-                          item.type === 'video' ? 'text-accent' : item.type === 'carousel' ? 'text-[hsl(210,80%,55%)]' : 'text-warning'
+                          item.type === 'video' ? 'text-primary' : item.type === 'carousel' ? 'text-[hsl(210,80%,55%)]' : 'text-warning'
                         )}>
                           {item.type === 'video' ? '▶' : item.type === 'carousel' ? '◻' : '◉'}
                         </span>
@@ -171,8 +142,7 @@ export default function Dashboard() {
 
         {/* Pipeline + Revenue */}
         <div className="grid grid-cols-2 gap-4">
-          {/* Pipeline Snapshot */}
-          <div className="rounded-lg border border-border bg-card p-4 cursor-pointer" onClick={() => navigate('/pipeline')}>
+          <div className="rounded-lg bg-card p-4 cursor-pointer card-hover" onClick={() => navigate('/pipeline')}>
             <span className="text-sm font-semibold block mb-3">Pipeline Snapshot</span>
             <div className="space-y-1.5">
               {stages.map((stage) => {
@@ -182,10 +152,10 @@ export default function Dashboard() {
                     <span className="text-xs text-muted-foreground w-16 text-right">{stage.label}</span>
                     <div className="flex-1 h-6 bg-background rounded overflow-hidden">
                       <div
-                        className="h-full bg-accent/20 rounded flex items-center pl-2 transition-all"
+                        className="h-full bg-primary/15 rounded flex items-center pl-2 transition-all"
                         style={{ width: `${Math.max(count * 18, 8)}%` }}
                       >
-                        <span className="text-xs font-semibold text-accent">{count}</span>
+                        <span className="text-xs font-semibold text-primary">{count}</span>
                       </div>
                     </div>
                   </div>
@@ -194,24 +164,23 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Revenue Goal */}
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg bg-card p-4">
             <span className="text-sm font-semibold block mb-3">Revenue Goal — April</span>
             <div className="flex justify-between mb-2">
               <span className="text-2xl font-bold">$16,280</span>
               <span className="text-sm text-muted-foreground">/ $25,000</span>
             </div>
             <div className="h-3 bg-background rounded-full overflow-hidden mb-2">
-              <div className="h-full bg-gradient-to-r from-accent to-accent/70 rounded-full" style={{ width: '65.1%' }} />
+              <div className="h-full gradient-primary rounded-full" style={{ width: '65.1%' }} />
             </div>
-            <span className="text-xs text-accent font-semibold">65.1% — $8,720 to go</span>
+            <span className="text-xs text-primary font-semibold">65.1% — $8,720 to go</span>
             <div className="mt-4">
               <ResponsiveContainer width="100%" height={80}>
                 <LineChart data={revenueTrend}>
-                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--accent))" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                   <Tooltip
-                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6, fontSize: 12 }}
+                    contentStyle={{ background: 'hsl(var(--card))', border: 'none', borderRadius: 8, fontSize: 12 }}
                     formatter={(v: number) => [`$${v.toLocaleString()}`, 'Revenue']}
                   />
                 </LineChart>
@@ -221,13 +190,13 @@ export default function Dashboard() {
         </div>
 
         {/* AI Activity */}
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg bg-card p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold flex items-center gap-2"><Bot className="h-4 w-4" /> Recent AI Activity</span>
             <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => navigate('/ai')}>View All <ArrowRight className="h-3 w-3" /></Button>
           </div>
           {mockAILogs.map((l) => (
-            <div key={l.id} className="flex items-center gap-3 py-2 border-b border-border/50">
+            <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[hsl(var(--ghost-border)/0.1)]">
               <StatusBadge status={l.status} />
               <span className="flex-1 text-[13px]">{l.action}</span>
               <StatusBadge status={l.module.toLowerCase()} />
