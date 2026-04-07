@@ -7,6 +7,9 @@ export interface ClientOption {
   id: string;
   business_name: string;
   is_internal: boolean;
+  industry?: string | null;
+  location?: string | null;
+  pipeline_stage?: string;
 }
 
 interface ClientContextValue {
