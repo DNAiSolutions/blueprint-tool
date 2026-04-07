@@ -343,15 +343,15 @@ function DiscoveryTab({ client, onSessionCreated, fullscreen, onToggleFullscreen
 
   const handleStartSession = useCallback(async () => {
     const session = createSession(client.business_name, client.industry || undefined);
-    setLocalSessionId(session.sessionId);
+    setLocalSessionId(session.id);
 
     // Persist session_id to the client record if it's a real DB client
     if (user && !client.id.startsWith('m')) {
-      await supabase.from('clients').update({ session_id: session.sessionId }).eq('id', client.id);
+      await supabase.from('clients').update({ session_id: session.id }).eq('id', client.id);
       queryClient.invalidateQueries({ queryKey: ['clients'] });
     }
 
-    onSessionCreated(session.sessionId);
+    onSessionCreated(session.id);
     toast.success('Discovery session started');
   }, [client, createSession, user, queryClient, onSessionCreated]);
 
