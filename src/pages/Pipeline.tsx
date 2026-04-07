@@ -151,7 +151,10 @@ export default function Pipeline() {
       {selectedClient && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedClient(null)} />
-          <div className="relative w-[500px] bg-card border-l border-border h-full overflow-hidden animate-slide-in-right flex flex-col shadow-[-8px_0_24px_rgba(0,0,0,0.3)]">
+          <div className={cn(
+            "relative bg-card h-full overflow-hidden animate-slide-in-right flex flex-col shadow-[-8px_0_24px_rgba(0,0,0,0.3)]",
+            drawerTab === 'discovery' && discoveryFullscreen ? 'w-full' : 'w-[500px]'
+          )}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
