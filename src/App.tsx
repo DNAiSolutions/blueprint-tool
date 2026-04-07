@@ -14,6 +14,7 @@ import Websites from "./pages/Websites";
 import Leads from "./pages/Leads";
 import AICommand from "./pages/AICommand";
 import Finances from "./pages/Finances";
+import Automations from "./pages/Automations";
 import SettingsPage from "./pages/Settings";
 import Canvas from "./pages/Canvas";
 import UsersSettings from "./pages/settings/UsersSettings";
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
               <Route path="/ai" element={<ProtectedRoute><AICommand /></ProtectedRoute>} />
               <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
+              <Route path="/automations" element={<ProtectedRoute><Automations /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/canvas" element={<ProtectedRoute><Canvas /></ProtectedRoute>} />
               <Route path="/canvas/:sessionId" element={<ProtectedRoute><Canvas /></ProtectedRoute>} />
