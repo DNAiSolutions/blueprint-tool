@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { useClientContext } from '@/hooks/useClientContext';
 import { useContentApproval } from '@/hooks/useContentApproval';
+import { AddScriptDialog } from '@/components/forms/AddScriptDialog';
 import { cn } from '@/lib/utils';
 import {
   Plus, ChevronLeft, ChevronRight, Filter, Play, Copy, Image,
@@ -58,6 +59,7 @@ function getAutoApproveCountdown(autoApproveAt: string | null): string | null {
 
 export default function Content() {
   const [subTab, setSubTab] = useState('calendar');
+  const [showAddScript, setShowAddScript] = useState(false);
   const tabs = ['calendar', 'scripts', 'production', 'review', 'published', 'templates'];
   const { selectedClient, internalClient } = useClientContext();
   const { approvals, loading: approvalsLoading, approve, requestRevision } = useContentApproval();
@@ -77,7 +79,7 @@ export default function Content() {
     <AppLayout>
       <header className="flex h-14 items-center justify-between border-b border-border px-6 shrink-0">
         <h1 className="text-lg font-bold">Content Studio</h1>
-        <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> New Script</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAddScript(true)}><Plus className="h-3.5 w-3.5" /> New Script</Button>
       </header>
 
       <div className="flex border-b border-border px-6 shrink-0">
@@ -252,6 +254,8 @@ export default function Content() {
           />
         )}
       </div>
+
+      <AddScriptDialog open={showAddScript} onOpenChange={setShowAddScript} />
     </AppLayout>
   );
 }
