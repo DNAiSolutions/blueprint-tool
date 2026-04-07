@@ -328,3 +328,68 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+
+// Discovery Tab — embeds the ALIGN canvas for the selected client
+function DiscoveryTab({ client, onSessionCreated, fullscreen, onToggleFullscreen }: {
+  client: any;
+  onSessionCreated: (sessionId: string) => void;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
+}) {
+  const { createSession } = useSession();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [localSessionId, setLocalSessionId] = useState<string | null>(client.session_id || null);
+
+  const handleStartSession = useCallback(async () => {
+    const session = createSession(client.business_name, client.industry || undefined);
+    setLocalSessionId(session.sessionId);
+
+    // Persist session_id to the client record if it's a real DB client
+    if (user && !client.id.startsWith('m')) {
+      await supabase.from('clients').update({ session_id: session.sessionId }).eq('id', client.id);
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    }
+
+    onSessionCreated(session.sessionId);
+    toast.success('Discovery session started');
+  }, [client, createSession, user, queryClient, onSessionCreated]);
+
+  if (!localSessionId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[400px] rounded-lg bg-[hsl(var(--surface-low))]">
+        <GitBranch className="h-10 w-10 text-primary mb-3" strokeWidth={1.5} />
+        <div className="text-base font-semibold mb-1">ALIGN Discovery Canvas</div>
+        <div className="text-[13px] text-muted-foreground text-center max-w-[280px] mb-4">
+          Map {client.business_name}'s operations, quantify revenue leakage, and assess AI readiness.
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={handleStartSession}>
+          <Play className="h-3.5 w-3.5" /> Start Discovery Session
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex flex-col", fullscreen ? "fixed inset-0 z-[60] bg-background" : "h-[600px]")}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-3 py-2 shrink-0">
+        <span className="ai-label">Discovery — {client.business_name}</span>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggleFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+          {fullscreen && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggleFullscreen}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+      {/* Embedded Canvas */}
+      <div className="flex-1 overflow-hidden rounded-lg">
+        <EmbeddedCanvas sessionId={localSessionId} compact hideReadiness />
+      </div>
+    </div>
+  );
+}
