@@ -57,8 +57,17 @@ export function ClientContextProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const DEFAULT_VALUE: ClientContextValue = {
+  selectedClientId: null,
+  setSelectedClientId: () => {},
+  clients: [],
+  internalClient: null,
+  externalClients: [],
+  selectedClient: null,
+  isLoading: true,
+};
+
 export function useClientContext() {
   const ctx = useContext(ClientContext);
-  if (!ctx) throw new Error('useClientContext must be used within ClientContextProvider');
-  return ctx;
+  return ctx ?? DEFAULT_VALUE;
 }
