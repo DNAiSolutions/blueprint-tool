@@ -14,6 +14,288 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_logs: {
+        Row: {
+          action: string
+          created_at: string
+          duration_ms: number | null
+          full_input: string | null
+          full_output: string | null
+          id: string
+          input_summary: string | null
+          module: string | null
+          output_summary: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          duration_ms?: number | null
+          full_input?: string | null
+          full_output?: string | null
+          id?: string
+          input_summary?: string | null
+          module?: string | null
+          output_summary?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          duration_ms?: number | null
+          full_input?: string | null
+          full_output?: string | null
+          id?: string
+          input_summary?: string | null
+          module?: string | null
+          output_summary?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          business_name: string
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          industry: string | null
+          location: string | null
+          monthly_value: number | null
+          phone: string | null
+          pipeline_stage: string
+          services: Json | null
+          session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          monthly_value?: number | null
+          phone?: string | null
+          pipeline_stage?: string
+          services?: Json | null
+          session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          monthly_value?: number | null
+          phone?: string | null
+          pipeline_stage?: string
+          services?: Json | null
+          session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      integrations: {
+        Row: {
+          api_key_encrypted: string | null
+          config: Json | null
+          created_at: string
+          id: string
+          last_tested: string | null
+          provider: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          last_tested?: string | null
+          provider: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          last_tested?: string | null
+          provider?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_number: string
+          line_items: Json
+          paid_at: string | null
+          sent_at: string | null
+          status: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          line_items?: Json
+          paid_at?: string | null
+          sent_at?: string | null
+          status?: string
+          total?: number
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          line_items?: Json
+          paid_at?: string | null
+          sent_at?: string | null
+          status?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          business_name: string | null
+          client_id: string | null
+          created_at: string
+          email: string | null
+          engagement_action: string | null
+          enrichment_data: Json | null
+          id: string
+          industry: string | null
+          name: string | null
+          phone: string | null
+          score: number | null
+          source: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          business_name?: string | null
+          client_id?: string | null
+          created_at?: string
+          email?: string | null
+          engagement_action?: string | null
+          enrichment_data?: Json | null
+          id?: string
+          industry?: string | null
+          name?: string | null
+          phone?: string | null
+          score?: number | null
+          source?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string | null
+          client_id?: string | null
+          created_at?: string
+          email?: string | null
+          engagement_action?: string | null
+          enrichment_data?: Json | null
+          id?: string
+          industry?: string | null
+          name?: string | null
+          phone?: string | null
+          score?: number | null
+          source?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          job_type: string
+          output_url: string | null
+          provider_job_id: string | null
+          script_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          job_type: string
+          output_url?: string | null
+          provider_job_id?: string | null
+          script_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          job_type?: string
+          output_url?: string | null
+          provider_job_id?: string | null
+          script_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_jobs_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -41,6 +323,174 @@ export type Database = {
         }
         Relationships: []
       }
+      scripts: {
+        Row: {
+          caption: string | null
+          client_id: string | null
+          created_at: string
+          duration_target: number | null
+          follow_up_comment: string | null
+          hook_method: string | null
+          id: string
+          metrics: Json | null
+          offer: string | null
+          pillar: string | null
+          platforms: string[] | null
+          published_at: string | null
+          scheduled_at: string | null
+          script_text: string | null
+          status: string
+          storyboard: Json | null
+          title: string
+          trigger_type: string | null
+          user_id: string
+          vac_type: string | null
+        }
+        Insert: {
+          caption?: string | null
+          client_id?: string | null
+          created_at?: string
+          duration_target?: number | null
+          follow_up_comment?: string | null
+          hook_method?: string | null
+          id?: string
+          metrics?: Json | null
+          offer?: string | null
+          pillar?: string | null
+          platforms?: string[] | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          script_text?: string | null
+          status?: string
+          storyboard?: Json | null
+          title: string
+          trigger_type?: string | null
+          user_id: string
+          vac_type?: string | null
+        }
+        Update: {
+          caption?: string | null
+          client_id?: string | null
+          created_at?: string
+          duration_target?: number | null
+          follow_up_comment?: string | null
+          hook_method?: string | null
+          id?: string
+          metrics?: Json | null
+          offer?: string | null
+          pillar?: string | null
+          platforms?: string[] | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          script_text?: string | null
+          status?: string
+          storyboard?: Json | null
+          title?: string
+          trigger_type?: string | null
+          user_id?: string
+          vac_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scripts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          is_completed: boolean | null
+          module: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          module?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          module?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          client_id: string | null
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          is_recurring: boolean | null
+          source: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          source?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          source?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -61,6 +511,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      websites: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          deploy_provider: string | null
+          deploy_status: string
+          deploy_url: string | null
+          domain: string | null
+          id: string
+          last_deployed: string | null
+          site_code: string | null
+          stitch_design_md: string | null
+          template: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          deploy_provider?: string | null
+          deploy_status?: string
+          deploy_url?: string | null
+          domain?: string | null
+          id?: string
+          last_deployed?: string | null
+          site_code?: string | null
+          stitch_design_md?: string | null
+          template?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          deploy_provider?: string | null
+          deploy_status?: string
+          deploy_url?: string | null
+          domain?: string | null
+          id?: string
+          last_deployed?: string | null
+          site_code?: string | null
+          stitch_design_md?: string | null
+          template?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "websites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
