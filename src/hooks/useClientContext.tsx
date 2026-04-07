@@ -33,7 +33,7 @@ export function ClientContextProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data } = await supabase
         .from('clients')
-        .select('id, business_name, is_internal')
+        .select('id, business_name, is_internal, industry, location, pipeline_stage')
         .order('is_internal', { ascending: false })
         .order('business_name', { ascending: true });
       return (data || []) as ClientOption[];
