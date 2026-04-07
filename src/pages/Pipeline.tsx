@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -7,14 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useSession } from '@/hooks/useSession';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
   Plus, X, Globe, Film, MessageSquare, BarChart3, GitBranch, GripVertical,
-  Check, Play, Bot, Eye, Target, CreditCard, FileText,
+  Check, Play, Bot, Eye, Target, CreditCard, FileText, Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmbeddedCanvas } from '@/components/canvas/EmbeddedCanvas';
 
 const STAGES = [
   { key: 'leads', label: 'Leads', color: 'hsl(var(--muted-foreground))' },
@@ -42,11 +44,13 @@ const mockClients = [
 
 export default function Pipeline() {
   const { user } = useAuth();
+  const { createSession } = useSession();
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [drawerTab, setDrawerTab] = useState('overview');
   const [viewMode, setViewMode] = useState('kanban');
+  const [discoveryFullscreen, setDiscoveryFullscreen] = useState(false);
 
   const { data: dbClients = [] } = useQuery({
     queryKey: ['clients'],
@@ -147,7 +151,10 @@ export default function Pipeline() {
       {selectedClient && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedClient(null)} />
-          <div className="relative w-[500px] bg-card border-l border-border h-full overflow-hidden animate-slide-in-right flex flex-col shadow-[-8px_0_24px_rgba(0,0,0,0.3)]">
+          <div className={cn(
+            "relative bg-card h-full overflow-hidden animate-slide-in-right flex flex-col shadow-[-8px_0_24px_rgba(0,0,0,0.3)]",
+            drawerTab === 'discovery' && discoveryFullscreen ? 'w-full' : 'w-[500px]'
+          )}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
@@ -221,12 +228,15 @@ export default function Pipeline() {
                 </div>
               )}
               {drawerTab === 'discovery' && (
-                <div className="flex flex-col items-center justify-center h-[300px] border-2 border-dashed border-border rounded-lg">
-                  <GitBranch className="h-10 w-10 text-accent mb-3" strokeWidth={1.5} />
-                  <div className="text-base font-semibold mb-1">ALIGN Discovery Canvas</div>
-                  <div className="text-[13px] text-muted-foreground text-center max-w-[280px] mb-4">Existing ALIGN canvas with nodes, connectors, questions, and funnel mapping loads here</div>
-                  <Button size="sm" className="gap-1.5"><Play className="h-3.5 w-3.5" /> Start Discovery Session</Button>
-                </div>
+                <DiscoveryTab
+                  client={selectedClient}
+                  onSessionCreated={(sessionId) => {
+                    // Update the client's session_id in the local state
+                    setSelectedClient((prev: any) => prev ? { ...prev, session_id: sessionId } : prev);
+                  }}
+                  fullscreen={discoveryFullscreen}
+                  onToggleFullscreen={() => setDiscoveryFullscreen(!discoveryFullscreen)}
+                />
               )}
               {drawerTab === 'readiness' && (
                 <div className="space-y-4">
@@ -314,6 +324,71 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
             {createMutation.isPending ? 'Adding...' : 'Add Client'}
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Discovery Tab — embeds the ALIGN canvas for the selected client
+function DiscoveryTab({ client, onSessionCreated, fullscreen, onToggleFullscreen }: {
+  client: any;
+  onSessionCreated: (sessionId: string) => void;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
+}) {
+  const { createSession } = useSession();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [localSessionId, setLocalSessionId] = useState<string | null>(client.session_id || null);
+
+  const handleStartSession = useCallback(async () => {
+    const session = createSession(client.business_name, client.industry || undefined);
+    setLocalSessionId(session.id);
+
+    // Persist session_id to the client record if it's a real DB client
+    if (user && !client.id.startsWith('m')) {
+      await supabase.from('clients').update({ session_id: session.id }).eq('id', client.id);
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    }
+
+    onSessionCreated(session.id);
+    toast.success('Discovery session started');
+  }, [client, createSession, user, queryClient, onSessionCreated]);
+
+  if (!localSessionId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[400px] rounded-lg bg-[hsl(var(--surface-low))]">
+        <GitBranch className="h-10 w-10 text-primary mb-3" strokeWidth={1.5} />
+        <div className="text-base font-semibold mb-1">ALIGN Discovery Canvas</div>
+        <div className="text-[13px] text-muted-foreground text-center max-w-[280px] mb-4">
+          Map {client.business_name}'s operations, quantify revenue leakage, and assess AI readiness.
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={handleStartSession}>
+          <Play className="h-3.5 w-3.5" /> Start Discovery Session
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex flex-col", fullscreen ? "fixed inset-0 z-[60] bg-background" : "h-[600px]")}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-3 py-2 shrink-0">
+        <span className="ai-label">Discovery — {client.business_name}</span>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggleFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+          {fullscreen && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggleFullscreen}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+      {/* Embedded Canvas */}
+      <div className="flex-1 overflow-hidden rounded-lg">
+        <EmbeddedCanvas sessionId={localSessionId} compact hideReadiness />
       </div>
     </div>
   );
