@@ -39,6 +39,7 @@ const App = () => (
               <Route path="/ai" element={<ProtectedRoute><AICommand /></ProtectedRoute>} />
               <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/canvas" element={<ProtectedRoute><Canvas /></ProtectedRoute>} />
               <Route path="/canvas/:sessionId" element={<ProtectedRoute><Canvas /></ProtectedRoute>} />
               <Route path="/settings/users" element={<ProtectedRoute requireAdmin><UsersSettings /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />

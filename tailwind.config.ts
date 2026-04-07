@@ -141,15 +141,14 @@ export default {
          Box Shadows - Per PRD Elevation Levels
          ============================================ */
       boxShadow: {
-        'level-1': '0 1px 3px rgba(0, 0, 0, 0.12)',
-        'level-2': '0 3px 6px rgba(0, 0, 0, 0.16)',
-        'level-3': '0 10px 20px rgba(0, 0, 0, 0.19)',
-        'level-4': '0 15px 35px rgba(0, 0, 0, 0.2)',
-        'glow-teal': '0 0 20px hsl(166 100% 40% / 0.4)',
-        'glow-primary': '0 0 20px hsl(220 48% 45% / 0.4)',
+        'level-1': '0 0 20px hsl(191 100% 75% / 0.03)',
+        'level-2': '0 0 30px hsl(191 100% 75% / 0.05)',
+        'level-3': '0 0 40px hsl(191 100% 75% / 0.06)',
+        'level-4': '0 0 60px hsl(191 100% 75% / 0.08)',
+        'glow-primary': '0 0 40px hsl(191 100% 75% / 0.15)',
         'glow-leak': '0 0 8px hsl(4 78% 57% / 0.5)',
         'glow-success': '0 0 8px hsl(145 65% 42% / 0.5)',
-        'inner-glow': 'inset 0 0 8px hsl(166 100% 40% / 0.3)',
+        'ambient': '0 0 40px hsl(191 100% 75% / 0.06)',
       },
       
       /* ============================================

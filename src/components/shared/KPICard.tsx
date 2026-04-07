@@ -11,9 +11,9 @@ interface KPICardProps {
 
 export function KPICard({ label, value, subtitle, icon: Icon, trend }: KPICardProps) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 hover:border-accent/30 transition-colors">
+    <div className="rounded-lg bg-card p-4 card-hover">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+        <span className="ai-label">{label}</span>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="flex items-end gap-2">

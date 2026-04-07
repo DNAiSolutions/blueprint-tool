@@ -1,11 +1,9 @@
 import * as React from "react";
-
 import { cn } from "@/lib/utils";
 
 /* ============================================
-   ALIGN Card Component - Per PRD
-   Border-radius: 8px (lg)
-   Shadow: Level 1 default
+   Ethereal AI Core — Card Component
+   No borders. Tonal surface shifts only.
    ============================================ */
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
@@ -13,7 +11,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       className={cn(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-level-1 transition-all duration-200",
+        "rounded-lg bg-card text-card-foreground transition-all duration-200",
         className
       )}
       {...props}
