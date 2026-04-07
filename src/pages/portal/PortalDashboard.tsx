@@ -87,7 +87,7 @@ export default function PortalDashboard() {
                         <Clock className="h-4 w-4 text-warning shrink-0" />
                       )}
                       <span className="flex-1 text-xs">
-                        {item.script_id ? `Script ${item.script_id.slice(0, 8)}...` : 'Content piece'}
+                        Content piece #{item.revision_number > 0 ? `(Rev ${item.revision_number})` : '(New)'}
                       </span>
                       <StatusBadge status={item.status} />
                       {item.status === 'pending' && countdown && (

@@ -14,10 +14,11 @@ import { usePipelineOps, PIPELINE_STAGES } from '@/hooks/usePipelineOps';
 import { cn } from '@/lib/utils';
 import {
   Plus, X, Globe, Film, MessageSquare, BarChart3, GitBranch, GripVertical,
-  Check, Play, Bot, Eye, Target, CreditCard, FileText, Maximize2, DollarSign, User,
+  Check, Play, Bot, Eye, Target, CreditCard, FileText, Maximize2, DollarSign, User, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmbeddedCanvas } from '@/components/canvas/EmbeddedCanvas';
+import { useAgentTasks } from '@/hooks/useAgentTasks';
 
 // Original pipeline stages for "All Clients" view
 const ALL_CLIENT_STAGES = [
@@ -145,7 +146,7 @@ export default function Pipeline() {
             onSelectClient={(client) => { setSelectedClient(client); setDrawerTab('overview'); }}
           />
         ) : (
-          <PipelineKanban
+          <PipelineKanbanWithAgents
             pipeline={activeTab}
             opportunities={opportunities}
             loading={pipelineLoading}
@@ -307,6 +308,28 @@ export default function Pipeline() {
   );
 }
 
+// ─── Pipeline Kanban with Agent Task Overlay ───
+function PipelineKanbanWithAgents(props: {
+  pipeline: 'new_leads' | 'sales' | 'onboarding';
+  opportunities: any[];
+  loading: boolean;
+  onDrop: (oppId: string, stage: string) => void;
+  onSelectOpp: (opp: any) => void;
+}) {
+  const { tasks: agentTasks } = useAgentTasks({ status: 'in_progress' });
+
+  // Build a map: client_id → active agent tasks
+  const tasksByClient: Record<string, { agent_id: string; task_type: string; status: string }[]> = {};
+  agentTasks.forEach(t => {
+    if (t.client_id) {
+      if (!tasksByClient[t.client_id]) tasksByClient[t.client_id] = [];
+      tasksByClient[t.client_id].push({ agent_id: t.agent_id, task_type: t.task_type, status: t.status });
+    }
+  });
+
+  return <PipelineKanban {...props} agentTasksByClient={tasksByClient} />;
+}
+
 // ─── Pipeline Kanban (New Leads / Sales / Onboarding) ───
 function PipelineKanban({
   pipeline,
@@ -314,12 +337,14 @@ function PipelineKanban({
   loading,
   onDrop,
   onSelectOpp,
+  agentTasksByClient = {},
 }: {
   pipeline: 'new_leads' | 'sales' | 'onboarding';
   opportunities: any[];
   loading: boolean;
   onDrop: (oppId: string, stage: string) => void;
   onSelectOpp: (opp: any) => void;
+  agentTasksByClient?: Record<string, { agent_id: string; task_type: string; status: string }[]>;
 }) {
   const stages = PIPELINE_STAGES[pipeline];
 
@@ -372,6 +397,17 @@ function PipelineKanban({
                         <User className="h-2.5 w-2.5" />
                         {opp.assigned_agent}
                       </span>
+                    </div>
+                  )}
+                  {/* Agent Tasks Overlay */}
+                  {opp.client_id && agentTasksByClient[opp.client_id]?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {agentTasksByClient[opp.client_id].map((task, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-[hsl(var(--surface-high))] text-muted-foreground border border-[hsl(var(--ghost-border)/0.15)]">
+                          <Loader2 className="h-2.5 w-2.5 animate-spin text-accent" />
+                          {task.agent_id}: {task.task_type.replace(/_/g, ' ')}
+                        </span>
+                      ))}
                     </div>
                   )}
                   <div className="text-[11px] text-muted-foreground">

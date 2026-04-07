@@ -11,6 +11,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 // Admin / Staff pages
 import Dashboard from "./pages/Dashboard";
 import Pipeline from "./pages/Pipeline";
+import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 import Content from "./pages/Content";
 import Websites from "./pages/Websites";
 import Leads from "./pages/Leads";
@@ -56,6 +58,8 @@ const App = () => (
               {/* Staff-only routes — clients auto-redirect to /portal */}
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/pipeline" element={<ProtectedRoute requireStaff><Pipeline /></ProtectedRoute>} />
+              <Route path="/projects" element={<ProtectedRoute requireStaff><Projects /></ProtectedRoute>} />
+              <Route path="/projects/:id" element={<ProtectedRoute requireStaff><ProjectDetail /></ProtectedRoute>} />
               <Route path="/content" element={<ProtectedRoute requireStaff><Content /></ProtectedRoute>} />
               <Route path="/websites" element={<ProtectedRoute requireStaff><Websites /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute requireStaff><Leads /></ProtectedRoute>} />

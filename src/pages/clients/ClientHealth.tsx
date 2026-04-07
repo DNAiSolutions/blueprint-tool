@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import {
   HeartPulse, AlertTriangle, TrendingUp, Users, Clock,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 /* ---------- mock data shown when DB is empty ---------- */
 const MOCK_SCORES = [
@@ -31,12 +33,29 @@ function formatDate(ts: string) {
 export default function ClientHealth() {
   const { scores, loading } = useClientHealth();
 
+  // Fetch client names for real data display
+  const clientIds = scores.map(s => s.client_id).filter(Boolean);
+  const { data: clientNames = {} } = useQuery({
+    queryKey: ['client_names', clientIds],
+    queryFn: async () => {
+      if (clientIds.length === 0) return {};
+      const { data } = await supabase
+        .from('clients')
+        .select('id, business_name')
+        .in('id', clientIds);
+      const map: Record<string, string> = {};
+      (data ?? []).forEach(c => { map[c.id] = c.business_name ?? c.id.slice(0, 8); });
+      return map;
+    },
+    enabled: clientIds.length > 0,
+  });
+
   const hasRealData = scores.length > 0;
 
   /* Build display rows — use real data if available, otherwise mock */
   const rows = hasRealData
     ? scores.map((s) => ({
-        client: s.client_id.slice(0, 8) + '...',
+        client: clientNames[s.client_id] ?? s.client_id.slice(0, 8) + '...',
         content: s.content_performance,
         engagement: s.engagement_score,
         payment: s.payment_score,

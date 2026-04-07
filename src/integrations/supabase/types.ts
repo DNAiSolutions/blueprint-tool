@@ -568,6 +568,279 @@ export type Database = {
           },
         ]
       }
+      templates: {
+        Row: {
+          id: string
+          category: string
+          industry: string | null
+          name: string
+          description: string | null
+          template_data: Json
+          is_active: boolean
+          usage_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          category: string
+          industry?: string | null
+          name: string
+          description?: string | null
+          template_data?: Json
+          is_active?: boolean
+          usage_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          category?: string
+          industry?: string | null
+          name?: string
+          description?: string | null
+          template_data?: Json
+          is_active?: boolean
+          usage_count?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      video_reviews: {
+        Row: {
+          id: string
+          client_id: string | null
+          video_url: string | null
+          status: string | null
+          requested_at: string | null
+          uploaded_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          client_id?: string | null
+          video_url?: string | null
+          status?: string | null
+          requested_at?: string | null
+          uploaded_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string | null
+          video_url?: string | null
+          status?: string | null
+          requested_at?: string | null
+          uploaded_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_events: {
+        Row: {
+          id: string
+          source: string
+          event_type: string
+          payload: Json
+          processed: boolean
+          processing_error: string | null
+          agent_task_id: string | null
+          created_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          source: string
+          event_type: string
+          payload: Json
+          processed?: boolean
+          processing_error?: string | null
+          agent_task_id?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          source?: string
+          event_type?: string
+          payload?: Json
+          processed?: boolean
+          processing_error?: string | null
+          agent_task_id?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_events_agent_task_id_fkey"
+            columns: ["agent_task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          id: string
+          client_id: string
+          name: string
+          status: string
+          ghl_subaccount_id: string | null
+          ghl_location_id: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          name: string
+          status?: string
+          ghl_subaccount_id?: string | null
+          ghl_location_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          name?: string
+          status?: string
+          ghl_subaccount_id?: string | null
+          ghl_location_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_services: {
+        Row: {
+          id: string
+          project_id: string
+          service_type: string
+          status: string
+          config: Json | null
+          activated_at: string
+          cancelled_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          service_type: string
+          status?: string
+          config?: Json | null
+          activated_at?: string
+          cancelled_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          service_type?: string
+          status?: string
+          config?: Json | null
+          activated_at?: string
+          cancelled_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_services_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          id: string
+          project_id: string
+          client_id: string
+          title: string
+          description: string | null
+          category: string
+          priority: string
+          status: string
+          assigned_agent: string | null
+          agent_task_id: string | null
+          resolution_notes: string | null
+          created_at: string
+          updated_at: string
+          resolved_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          client_id: string
+          title: string
+          description?: string | null
+          category?: string
+          priority?: string
+          status?: string
+          assigned_agent?: string | null
+          agent_task_id?: string | null
+          resolution_notes?: string | null
+          created_at?: string
+          updated_at?: string
+          resolved_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          client_id?: string
+          title?: string
+          description?: string | null
+          category?: string
+          priority?: string
+          status?: string
+          assigned_agent?: string | null
+          agent_task_id?: string | null
+          resolution_notes?: string | null
+          created_at?: string
+          updated_at?: string
+          resolved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_agent_task_id_fkey"
+            columns: ["agent_task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -586,7 +859,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "rep"
+      app_role: "admin" | "rep" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -714,7 +987,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "rep"],
+      app_role: ["admin", "rep", "client"],
     },
   },
 } as const

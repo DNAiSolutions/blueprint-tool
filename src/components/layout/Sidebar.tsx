@@ -20,6 +20,8 @@ import {
   Shield,
   Bell,
   Users,
+  FolderKanban,
+  DollarSign,
   // Portal icons
   Palette,
   GraduationCap,
@@ -40,19 +42,23 @@ interface NavItem {
 const adminNav: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { id: 'pipeline', label: 'Pipeline', icon: GitBranch, href: '/pipeline' },
+  { id: 'projects', label: 'Projects', icon: FolderKanban, href: '/projects' },
   { id: 'content', label: 'Content', icon: Film, href: '/content' },
-  { id: 'clients', label: 'Clients', icon: Users, href: '/clients',
-    children: [
-      { id: 'clients-health', label: 'Health Scores', href: '/clients/health' },
-      { id: 'clients-onboarding', label: 'Onboarding', href: '/clients/onboarding' },
-      { id: 'clients-costs', label: 'Cost Ledger', href: '/clients/costs' },
-      { id: 'clients-templates', label: 'Templates', href: '/clients/templates' },
-    ],
-  },
   { id: 'websites', label: 'Websites', icon: Globe, href: '/websites' },
   { id: 'leads', label: 'Leads', icon: Radio, href: '/leads' },
   { id: 'ai', label: 'AI Command', icon: Bot, href: '/ai' },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+  { id: 'finances', label: 'Finances', icon: DollarSign, href: '/finances' },
+  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings',
+    children: [
+      { id: 'settings-users', label: 'Users', href: '/settings/users' },
+      { id: 'settings-automations', label: 'Automations', href: '/settings/automations' },
+      { id: 'settings-canvas', label: 'Canvas', href: '/settings/canvas' },
+      { id: 'settings-health', label: 'Client Health', href: '/clients/health' },
+      { id: 'settings-costs', label: 'Cost Ledger', href: '/clients/costs' },
+      { id: 'settings-templates', label: 'Templates', href: '/clients/templates' },
+      { id: 'settings-webhooks', label: 'Webhooks', href: '/clients/webhooks' },
+    ],
+  },
 ];
 
 // Client portal navigation

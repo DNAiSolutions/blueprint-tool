@@ -35,12 +35,12 @@ export function useOffboarding() {
       if (tasksErr) throw tasksErr;
       stepsCompleted.push('agent_tasks_cancelled');
 
-      // 3. Cancel pending content_approvals
+      // 3. Cancel pending content_approvals (auto-approve to close them out)
       const { error: approvalsErr } = await supabase
         .from('content_approvals')
-        .update({ status: 'rejected', revision_notes: 'Client offboarded — auto-cancelled' })
+        .update({ status: 'auto_approved', revision_notes: 'Client offboarded — auto-closed' })
         .eq('client_id', clientId)
-        .in('status', ['pending', 'submitted']);
+        .in('status', ['pending', 'revision_requested']);
       if (approvalsErr) throw approvalsErr;
       stepsCompleted.push('content_approvals_cancelled');
 

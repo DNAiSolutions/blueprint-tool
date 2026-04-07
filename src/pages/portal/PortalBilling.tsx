@@ -14,7 +14,7 @@ const mockInvoices = [
 export default function PortalBilling() {
   const { clientRecord, isAdmin } = useAuth();
   const { stats } = useCostLedger(
-    isAdmin && clientRecord?.id ? { clientId: clientRecord.id } : {},
+    clientRecord?.id ? { clientId: clientRecord.id } : {},
   );
 
   const packageTier = clientRecord?.package_tier ?? 'Growth';
