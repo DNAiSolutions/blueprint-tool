@@ -12,53 +12,51 @@ import {
   Globe,
   Radio,
   Bot,
-  DollarSign,
   Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Shield,
-  Workflow,
-  Zap,
   Bell,
   Users,
-  Heart,
-  Webhook,
-  Receipt,
-  BookTemplate,
-  ClipboardList,
   // Portal icons
-  Eye,
   Palette,
   GraduationCap,
   CreditCard,
   Star,
-  Upload,
+  ClipboardList,
 } from 'lucide-react';
 
-// Admin/rep navigation
-const adminNav = [
+interface NavItem {
+  id: string;
+  label: string;
+  icon: typeof LayoutDashboard | null;
+  href: string;
+  children?: { id: string; label: string; href: string }[];
+}
+
+// Admin/rep navigation — consolidated with nested sub-pages
+const adminNav: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { id: 'pipeline', label: 'Pipeline', icon: GitBranch, href: '/pipeline' },
-  { id: 'canvas', label: 'Automation Builder', icon: Workflow, href: '/canvas' },
   { id: 'content', label: 'Content', icon: Film, href: '/content' },
+  { id: 'clients', label: 'Clients', icon: Users, href: '/clients',
+    children: [
+      { id: 'clients-health', label: 'Health Scores', href: '/clients/health' },
+      { id: 'clients-onboarding', label: 'Onboarding', href: '/clients/onboarding' },
+      { id: 'clients-costs', label: 'Cost Ledger', href: '/clients/costs' },
+      { id: 'clients-templates', label: 'Templates', href: '/clients/templates' },
+    ],
+  },
   { id: 'websites', label: 'Websites', icon: Globe, href: '/websites' },
-  { id: 'automations', label: 'Automations', icon: Zap, href: '/automations' },
   { id: 'leads', label: 'Leads', icon: Radio, href: '/leads' },
   { id: 'ai', label: 'AI Command', icon: Bot, href: '/ai' },
-  { id: 'finances', label: 'Finances', icon: DollarSign, href: '/finances' },
-  { id: 'divider-1', label: '', icon: null, href: '' },
-  { id: 'onboarding', label: 'Onboarding', icon: ClipboardList, href: '/onboarding' },
-  { id: 'health', label: 'Client Health', icon: Heart, href: '/health' },
-  { id: 'costs', label: 'Cost Ledger', icon: Receipt, href: '/costs' },
-  { id: 'templates', label: 'Templates', icon: BookTemplate, href: '/templates' },
-  { id: 'webhooks', label: 'Webhooks', icon: Webhook, href: '/webhooks' },
-  { id: 'divider-2', label: '', icon: null, href: '' },
   { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
 // Client portal navigation
-const clientNav = [
+const clientNav: NavItem[] = [
   { id: 'portal', label: 'Dashboard', icon: LayoutDashboard, href: '/portal' },
   { id: 'portal-content', label: 'Content', icon: Film, href: '/portal/content' },
   { id: 'portal-website', label: 'My Website', icon: Globe, href: '/portal/website' },
@@ -71,6 +69,7 @@ const clientNav = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut, isAdmin, isClient, role } = useAuth();
@@ -85,6 +84,18 @@ export function Sidebar() {
     if (href === '/' || href === '/portal') return location.pathname === href;
     return location.pathname.startsWith(href);
   };
+
+  const toggleSection = (id: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Auto-expand section if a child route is active
+  const isChildActive = (item: NavItem) =>
+    item.children?.some(child => location.pathname.startsWith(child.href)) ?? false;
 
   return (
     <aside
@@ -114,30 +125,74 @@ export function Sidebar() {
       {/* Nav Items */}
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto scrollbar-thin">
         {navItems.map((item) => {
-          // Divider
           if (item.icon === null) {
             return collapsed ? null : (
               <div key={item.id} className="my-2 mx-3 h-px bg-[hsl(var(--ghost-border)/0.15)]" />
             );
           }
 
-          const Icon = item.icon;
-          const active = isActive(item.href);
+          const Icon = item.icon!;
+          const active = isActive(item.href) && !item.children;
+          const hasChildren = item.children && item.children.length > 0;
+          const isExpanded = expandedSections.has(item.id) || isChildActive(item);
+
           return (
-            <button
-              key={item.id}
-              onClick={() => navigate(item.href)}
-              className={cn(
-                'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                active
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-[hsl(var(--surface-high))] hover:text-foreground',
-                collapsed && 'justify-center px-0'
+            <div key={item.id}>
+              <button
+                onClick={() => {
+                  if (hasChildren && !collapsed) {
+                    toggleSection(item.id);
+                    // Also navigate to the parent route
+                    navigate(item.href);
+                  } else {
+                    navigate(item.href);
+                  }
+                }}
+                className={cn(
+                  'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                  active || (hasChildren && isChildActive(item))
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-[hsl(var(--surface-high))] hover:text-foreground',
+                  collapsed && 'justify-center px-0'
+                )}
+              >
+                <Icon className={cn('h-[18px] w-[18px] shrink-0', (active || isChildActive(item)) && 'text-primary')} />
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {hasChildren && (
+                      <ChevronDown className={cn(
+                        'h-3.5 w-3.5 transition-transform duration-200',
+                        isExpanded && 'rotate-180'
+                      )} />
+                    )}
+                  </>
+                )}
+              </button>
+
+              {/* Nested children */}
+              {hasChildren && isExpanded && !collapsed && (
+                <div className="ml-4 pl-3 border-l border-[hsl(var(--ghost-border)/0.12)] space-y-0.5 mt-0.5 mb-1">
+                  {item.children!.map(child => {
+                    const childActive = isActive(child.href);
+                    return (
+                      <button
+                        key={child.id}
+                        onClick={() => navigate(child.href)}
+                        className={cn(
+                          'flex w-full items-center rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
+                          childActive
+                            ? 'text-primary bg-primary/5'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--surface-high))]'
+                        )}
+                      >
+                        {child.label}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <Icon className={cn('h-[18px] w-[18px] shrink-0', active && 'text-primary')} />
-              {!collapsed && <span>{item.label}</span>}
-            </button>
+            </div>
           );
         })}
       </nav>

@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Activity, CheckCircle2, AlertCircle, Loader2, Clock } from 'lucide-react';
-import { activityLog, agents, getAgentBgClass, getAgent } from './mockData';
+import { activityLog as mockActivityLog, agents, getAgentBgClass, getAgent } from './mockData';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const statusIcons: Record<string, typeof CheckCircle2> = {
   success: CheckCircle2,
@@ -11,8 +13,54 @@ const statusIcons: Record<string, typeof CheckCircle2> = {
   queued: Clock,
 };
 
+function formatDuration(ms: number | null): string {
+  if (!ms) return '—';
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(0)}s`;
+  return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+  return `${Math.floor(hrs / 24)} day ago`;
+}
+
 export function ActivityTab() {
   const [filterAgent, setFilterAgent] = useState<string>('all');
+
+  // Fetch real ai_logs
+  const { data: realLogs = [] } = useQuery({
+    queryKey: ['ai_logs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ai_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Convert real logs into activity format, fall back to mock
+  const activityLog = useMemo(() => {
+    if (realLogs.length === 0) return mockActivityLog;
+
+    return realLogs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      agentId: (log as any).agent_id || 'ceo', // ai_logs may not have agent_id, default
+      module: log.module || 'System',
+      status: log.status as 'success' | 'running' | 'error' | 'queued',
+      time: formatTimeAgo(log.created_at),
+      duration: formatDuration(log.duration_ms),
+    }));
+  }, [realLogs]);
 
   const filtered = filterAgent === 'all'
     ? activityLog
@@ -26,6 +74,7 @@ export function ActivityTab() {
           <div className="ai-label">Activity Feed</div>
           <span className="text-[11px] text-muted-foreground flex items-center gap-1">
             <Activity className="h-3 w-3" /> {filtered.length} entries
+            {realLogs.length > 0 && <span className="text-accent ml-1">Live</span>}
           </span>
         </div>
         <div className="flex gap-1.5">

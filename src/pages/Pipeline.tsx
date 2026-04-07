@@ -10,15 +10,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSession } from '@/hooks/useSession';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePipelineOps, PIPELINE_STAGES } from '@/hooks/usePipelineOps';
 import { cn } from '@/lib/utils';
 import {
   Plus, X, Globe, Film, MessageSquare, BarChart3, GitBranch, GripVertical,
-  Check, Play, Bot, Eye, Target, CreditCard, FileText, Maximize2,
+  Check, Play, Bot, Eye, Target, CreditCard, FileText, Maximize2, DollarSign, User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmbeddedCanvas } from '@/components/canvas/EmbeddedCanvas';
 
-const STAGES = [
+// Original pipeline stages for "All Clients" view
+const ALL_CLIENT_STAGES = [
   { key: 'leads', label: 'Leads', color: 'hsl(var(--muted-foreground))' },
   { key: 'audit', label: 'Audit', color: 'hsl(var(--warning))' },
   { key: 'strategy', label: 'Strategy', color: 'hsl(210,80%,55%)' },
@@ -27,7 +29,15 @@ const STAGES = [
   { key: 'live', label: 'Live', color: 'hsl(var(--success))' },
 ] as const;
 
-type PipelineStage = typeof STAGES[number]['key'];
+type AllClientStage = typeof ALL_CLIENT_STAGES[number]['key'];
+type PipelineTab = 'new_leads' | 'sales' | 'onboarding' | 'all_clients';
+
+const TABS: { key: PipelineTab; label: string }[] = [
+  { key: 'new_leads', label: 'New Leads' },
+  { key: 'sales', label: 'Sales' },
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'all_clients', label: 'All Clients' },
+];
 
 const mockClients = [
   { id: 'm1', business_name: 'Acme Pressure Washing', contact_name: 'John Smith', industry: 'Pressure Washing', location: 'Metairie, LA', email: 'john@acmepw.com', phone: '(504) 555-0101', pipeline_stage: 'build', services: ['content', 'website'], monthly_value: 1356, days_in_stage: 12 },
@@ -51,7 +61,15 @@ export default function Pipeline() {
   const [drawerTab, setDrawerTab] = useState('overview');
   const [viewMode, setViewMode] = useState('kanban');
   const [discoveryFullscreen, setDiscoveryFullscreen] = useState(false);
+  const [activeTab, setActiveTab] = useState<PipelineTab>('new_leads');
 
+  // Real pipeline data for multi-pipeline tabs
+  const pipelineType = activeTab !== 'all_clients' ? activeTab : undefined;
+  const { opportunities, loading: pipelineLoading, updateStage: updatePipelineStage, createOpportunity, stats } = usePipelineOps({
+    pipeline: pipelineType as 'new_leads' | 'sales' | 'onboarding' | undefined,
+  });
+
+  // Original clients query for "All Clients" fallback
   const { data: dbClients = [] } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
@@ -60,10 +78,9 @@ export default function Pipeline() {
     },
   });
 
-  // Use DB clients if available, otherwise mock
   const clients = dbClients.length > 0 ? dbClients : mockClients;
 
-  const updateStageMutation = useMutation({
+  const updateClientStageMutation = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
       const { error } = await supabase.from('clients').update({ pipeline_stage: stage }).eq('id', id);
       if (error) throw error;
@@ -92,62 +109,55 @@ export default function Pipeline() {
         </div>
       </header>
 
-      {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto p-4">
-        <div className="flex gap-3 min-w-max h-full">
-          {STAGES.map((stage) => {
-            const stageClients = clients.filter((c: any) => c.pipeline_stage === stage.key);
-            return (
-              <div key={stage.key} className="w-[280px] flex flex-col"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  const clientId = e.dataTransfer.getData('clientId');
-                  if (clientId && !clientId.startsWith('m')) {
-                    updateStageMutation.mutate({ id: clientId, stage: stage.key });
-                  }
-                }}
-              >
-                {/* Column Header */}
-                <div className="flex items-center gap-2 py-2 mb-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
-                  <span className="text-xs font-semibold uppercase tracking-wider">{stage.label}</span>
-                  <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">{stageClients.length}</span>
-                </div>
-
-                {/* Cards */}
-                <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
-                  {stageClients.map((client: any) => (
-                    <div
-                      key={client.id}
-                      draggable
-                      onDragStart={(e) => e.dataTransfer.setData('clientId', client.id)}
-                      onClick={() => { setSelectedClient(client); setDrawerTab('overview'); }}
-                      className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-accent/40 transition-colors group"
-                    >
-                      <div className="text-sm font-semibold mb-1">{client.business_name}</div>
-                      <div className="text-xs text-muted-foreground mb-1.5">{client.contact_name} · {client.location}</div>
-                      {Number(client.monthly_value) > 0 && (
-                        <div className="text-[13px] text-accent font-semibold mb-1">
-                          ${Number(client.monthly_value).toLocaleString()}/mo · {(client.services || []).join(' + ')}
-                        </div>
-                      )}
-                      <div className="text-[11px] text-muted-foreground">{stage.label} · {client.days_in_stage || '—'} days</div>
-                      <div className="flex gap-1.5 mt-2">
-                        {(client.services || []).includes('website') && <Globe className="h-3.5 w-3.5 text-[hsl(210,80%,55%)]" />}
-                        {(client.services || []).includes('content') && <Film className="h-3.5 w-3.5 text-accent" />}
-                        <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                        <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      {/* Pipeline Tab Bar */}
+      <div className="flex border-b border-border px-6 shrink-0">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-4 py-2.5 text-xs font-medium border-b-2 transition-colors',
+              activeTab === tab.key
+                ? 'border-accent text-accent'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {tab.label}
+            {tab.key !== 'all_clients' && stats.totalCount > 0 && activeTab === tab.key && (
+              <span className="ml-1.5 text-[10px] bg-accent/15 text-accent rounded-full px-1.5">
+                {stats.totalCount}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Client Drawer */}
+      {/* Kanban Board */}
+      <div className="flex-1 overflow-x-auto p-4">
+        {activeTab === 'all_clients' ? (
+          <AllClientsKanban
+            clients={clients}
+            onDrop={(clientId, stage) => {
+              if (!clientId.startsWith('m')) {
+                updateClientStageMutation.mutate({ id: clientId, stage });
+              }
+            }}
+            onSelectClient={(client) => { setSelectedClient(client); setDrawerTab('overview'); }}
+          />
+        ) : (
+          <PipelineKanban
+            pipeline={activeTab}
+            opportunities={opportunities}
+            loading={pipelineLoading}
+            onDrop={(oppId, stage) => {
+              updatePipelineStage.mutate({ id: oppId, stage });
+            }}
+            onSelectOpp={(opp) => { setSelectedClient(opp); setDrawerTab('overview'); }}
+          />
+        )}
+      </div>
+
+      {/* Client / Opportunity Drawer */}
       {selectedClient && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedClient(null)} />
@@ -158,8 +168,10 @@ export default function Pipeline() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
-                <div className="text-lg font-semibold">{selectedClient.business_name}</div>
-                <div className="text-xs text-muted-foreground">{selectedClient.contact_name} · {selectedClient.location}</div>
+                <div className="text-lg font-semibold">{selectedClient.business_name || selectedClient.stage}</div>
+                <div className="text-xs text-muted-foreground">
+                  {selectedClient.contact_name ? `${selectedClient.contact_name} · ${selectedClient.location}` : selectedClient.pipeline ? `${selectedClient.pipeline} pipeline` : ''}
+                </div>
               </div>
               <button onClick={() => setSelectedClient(null)} className="text-muted-foreground hover:text-foreground p-1"><X className="h-5 w-5" /></button>
             </div>
@@ -182,7 +194,7 @@ export default function Pipeline() {
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { label: 'Industry', value: selectedClient.industry },
-                      { label: 'MRR', value: Number(selectedClient.monthly_value) > 0 ? `$${Number(selectedClient.monthly_value).toLocaleString()}/mo` : '—', accent: true },
+                      { label: selectedClient.deal_value !== undefined ? 'Deal Value' : 'MRR', value: selectedClient.deal_value !== undefined ? `$${Number(selectedClient.deal_value).toLocaleString()}` : Number(selectedClient.monthly_value) > 0 ? `$${Number(selectedClient.monthly_value).toLocaleString()}/mo` : '—', accent: true },
                       { label: 'Email', value: selectedClient.email, link: true },
                       { label: 'Phone', value: selectedClient.phone },
                     ].map(({ label, value, accent, link }) => (
@@ -192,46 +204,70 @@ export default function Pipeline() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Assigned Agent (for pipeline opportunities) */}
+                  {selectedClient.assigned_agent && (
+                    <div className="p-3 rounded-md bg-background">
+                      <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">Assigned Agent</div>
+                      <div className="text-[13px] flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 text-accent" />
+                        {selectedClient.assigned_agent}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes (for pipeline opportunities) */}
+                  {selectedClient.notes && (
+                    <div className="p-3 rounded-md bg-background">
+                      <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">Notes</div>
+                      <div className="text-[13px] text-muted-foreground">{selectedClient.notes}</div>
+                    </div>
+                  )}
+
                   {/* Services */}
-                  <div className="p-3 rounded-md bg-background">
-                    <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Services</div>
-                    <div className="flex gap-1.5">
-                      {(selectedClient.services || []).length > 0 ? (selectedClient.services || []).map((s: string) => (
-                        <StatusBadge key={s} status={s} />
-                      )) : <span className="text-xs text-muted-foreground">None yet</span>}
+                  {selectedClient.services && (
+                    <div className="p-3 rounded-md bg-background">
+                      <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Services</div>
+                      <div className="flex gap-1.5">
+                        {(selectedClient.services || []).length > 0 ? (selectedClient.services || []).map((s: string) => (
+                          <StatusBadge key={s} status={s} />
+                        )) : <span className="text-xs text-muted-foreground">None yet</span>}
+                      </div>
                     </div>
-                  </div>
-                  {/* Stage History */}
-                  <div className="p-3 rounded-md bg-background">
-                    <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3">Stage History</div>
-                    <div className="flex items-center gap-1">
-                      {STAGES.map((s, i) => {
-                        const stageIdx = STAGES.findIndex(st => st.key === selectedClient.pipeline_stage);
-                        const isActive = i <= stageIdx;
-                        return (
-                          <div key={s.key} className="flex items-center gap-1">
-                            <div className={cn(
-                              'w-6 h-6 rounded-full flex items-center justify-center',
-                              isActive ? 'bg-accent' : 'bg-muted'
-                            )}>
-                              {i < stageIdx ? <Check className="h-3 w-3 text-accent-foreground" /> : i === stageIdx ? <div className="w-2 h-2 rounded-full bg-accent-foreground" /> : null}
+                  )}
+
+                  {/* Stage History (for All Clients view) */}
+                  {selectedClient.pipeline_stage && (
+                    <div className="p-3 rounded-md bg-background">
+                      <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3">Stage History</div>
+                      <div className="flex items-center gap-1">
+                        {ALL_CLIENT_STAGES.map((s, i) => {
+                          const stageIdx = ALL_CLIENT_STAGES.findIndex(st => st.key === selectedClient.pipeline_stage);
+                          const isActive = i <= stageIdx;
+                          return (
+                            <div key={s.key} className="flex items-center gap-1">
+                              <div className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center',
+                                isActive ? 'bg-accent' : 'bg-muted'
+                              )}>
+                                {i < stageIdx ? <Check className="h-3 w-3 text-accent-foreground" /> : i === stageIdx ? <div className="w-2 h-2 rounded-full bg-accent-foreground" /> : null}
+                              </div>
+                              {i < ALL_CLIENT_STAGES.length - 1 && <div className={cn('w-4 h-0.5', isActive && i < stageIdx ? 'bg-accent' : 'bg-muted')} />}
                             </div>
-                            {i < STAGES.length - 1 && <div className={cn('w-4 h-0.5', isActive && i < stageIdx ? 'bg-accent' : 'bg-muted')} />}
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
+                      <div className="flex gap-1 mt-1.5">
+                        {ALL_CLIENT_STAGES.map(s => <span key={s.key} className="text-[9px] text-muted-foreground w-6 text-center">{s.label.slice(0,3)}</span>)}
+                      </div>
                     </div>
-                    <div className="flex gap-1 mt-1.5">
-                      {STAGES.map(s => <span key={s.key} className="text-[9px] text-muted-foreground w-6 text-center">{s.label.slice(0,3)}</span>)}
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
-              {drawerTab === 'discovery' && (
+              {drawerTab === 'discovery' && selectedClient.business_name && (
                 <DiscoveryTab
                   client={selectedClient}
                   onSessionCreated={(sessionId) => {
-                    // Update the client's session_id in the local state
                     setSelectedClient((prev: any) => prev ? { ...prev, session_id: sessionId } : prev);
                   }}
                   fullscreen={discoveryFullscreen}
@@ -256,7 +292,7 @@ export default function Pipeline() {
               {!['overview', 'discovery', 'readiness', 'content'].includes(drawerTab) && (
                 <EmptyState
                   icon={drawerTab === 'audit' ? Eye : drawerTab === 'strategy' ? Target : drawerTab === 'website' ? Globe : drawerTab === 'comms' ? MessageSquare : drawerTab === 'billing' ? CreditCard : FileText}
-                  title={`${drawerTab.charAt(0).toUpperCase() + drawerTab.slice(1)} tab for ${selectedClient.business_name}`}
+                  title={`${drawerTab.charAt(0).toUpperCase() + drawerTab.slice(1)} tab for ${selectedClient.business_name || 'this opportunity'}`}
                   actionLabel={`Set Up ${drawerTab.charAt(0).toUpperCase() + drawerTab.slice(1)}`}
                   onAction={() => {}}
                 />
@@ -266,25 +302,211 @@ export default function Pipeline() {
         </div>
       )}
 
-      {showAddModal && <AddClientModal onClose={() => setShowAddModal(false)} />}
+      {showAddModal && <AddClientModal onClose={() => setShowAddModal(false)} activePipeline={activeTab} />}
     </AppLayout>
   );
 }
 
-function AddClientModal({ onClose }: { onClose: () => void }) {
+// ─── Pipeline Kanban (New Leads / Sales / Onboarding) ───
+function PipelineKanban({
+  pipeline,
+  opportunities,
+  loading,
+  onDrop,
+  onSelectOpp,
+}: {
+  pipeline: 'new_leads' | 'sales' | 'onboarding';
+  opportunities: any[];
+  loading: boolean;
+  onDrop: (oppId: string, stage: string) => void;
+  onSelectOpp: (opp: any) => void;
+}) {
+  const stages = PIPELINE_STAGES[pipeline];
+
+  return (
+    <div className="flex gap-3 min-w-max h-full">
+      {stages.map((stage) => {
+        const stageOpps = opportunities.filter((o) => o.stage === stage.key);
+        return (
+          <div
+            key={stage.key}
+            className="w-[280px] flex flex-col"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const oppId = e.dataTransfer.getData('oppId');
+              if (oppId) onDrop(oppId, stage.key);
+            }}
+          >
+            {/* Column Header */}
+            <div className="flex items-center gap-2 py-2 mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+              <span className="text-xs font-semibold uppercase tracking-wider">{stage.label}</span>
+              <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">{stageOpps.length}</span>
+            </div>
+
+            {/* Cards */}
+            <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
+              {stageOpps.length === 0 && !loading && (
+                <div className="text-center py-8 text-xs text-muted-foreground/50">
+                  Drop here
+                </div>
+              )}
+              {stageOpps.map((opp) => (
+                <div
+                  key={opp.id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData('oppId', opp.id)}
+                  onClick={() => onSelectOpp(opp)}
+                  className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-accent/40 transition-colors group"
+                >
+                  <div className="text-sm font-semibold mb-1">{opp.notes || opp.stage}</div>
+                  {Number(opp.deal_value) > 0 && (
+                    <div className="text-[13px] text-accent font-semibold mb-1 flex items-center gap-1">
+                      <DollarSign className="h-3 w-3" />
+                      ${Number(opp.deal_value).toLocaleString()}
+                    </div>
+                  )}
+                  {opp.assigned_agent && (
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-accent/10 text-accent border border-accent/20">
+                        <User className="h-2.5 w-2.5" />
+                        {opp.assigned_agent}
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-[11px] text-muted-foreground">
+                    {opp.entered_stage_at
+                      ? `Entered ${new Date(opp.entered_stage_at).toLocaleDateString()}`
+                      : `Created ${new Date(opp.created_at).toLocaleDateString()}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── All Clients Kanban (Original) ───
+function AllClientsKanban({
+  clients,
+  onDrop,
+  onSelectClient,
+}: {
+  clients: any[];
+  onDrop: (clientId: string, stage: string) => void;
+  onSelectClient: (client: any) => void;
+}) {
+  return (
+    <div className="flex gap-3 min-w-max h-full">
+      {ALL_CLIENT_STAGES.map((stage) => {
+        const stageClients = clients.filter((c: any) => c.pipeline_stage === stage.key);
+        return (
+          <div key={stage.key} className="w-[280px] flex flex-col"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const clientId = e.dataTransfer.getData('clientId');
+              if (clientId) onDrop(clientId, stage.key);
+            }}
+          >
+            {/* Column Header */}
+            <div className="flex items-center gap-2 py-2 mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+              <span className="text-xs font-semibold uppercase tracking-wider">{stage.label}</span>
+              <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">{stageClients.length}</span>
+            </div>
+
+            {/* Cards */}
+            <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
+              {stageClients.map((client: any) => (
+                <div
+                  key={client.id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData('clientId', client.id)}
+                  onClick={() => onSelectClient(client)}
+                  className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-accent/40 transition-colors group"
+                >
+                  <div className="text-sm font-semibold mb-1">{client.business_name}</div>
+                  <div className="text-xs text-muted-foreground mb-1.5">{client.contact_name} · {client.location}</div>
+                  {Number(client.monthly_value) > 0 && (
+                    <div className="text-[13px] text-accent font-semibold mb-1">
+                      ${Number(client.monthly_value).toLocaleString()}/mo · {(client.services || []).join(' + ')}
+                    </div>
+                  )}
+                  <div className="text-[11px] text-muted-foreground">{stage.label} · {client.days_in_stage || '—'} days</div>
+                  <div className="flex gap-1.5 mt-2">
+                    {(client.services || []).includes('website') && <Globe className="h-3.5 w-3.5 text-[hsl(210,80%,55%)]" />}
+                    {(client.services || []).includes('content') && <Film className="h-3.5 w-3.5 text-accent" />}
+                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                    <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Add Client Modal ───
+function AddClientModal({ onClose, activePipeline }: { onClose: () => void; activePipeline: PipelineTab }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ business_name: '', contact_name: '', email: '', phone: '', industry: '', location: '', monthly_value: '', pipeline_stage: 'leads' as PipelineStage });
+  const { createOpportunity } = usePipelineOps();
+  const isPipelineMode = activePipeline !== 'all_clients';
 
-  const createMutation = useMutation({
+  const [form, setForm] = useState({
+    business_name: '',
+    contact_name: '',
+    email: '',
+    phone: '',
+    industry: '',
+    location: '',
+    monthly_value: '',
+    pipeline_stage: 'leads' as AllClientStage,
+    deal_value: '',
+    assigned_agent: '',
+    notes: '',
+  });
+
+  const createClientMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase.from('clients').insert({ ...form, monthly_value: Number(form.monthly_value) || 0, user_id: user.id });
+      const { error } = await supabase.from('clients').insert({
+        business_name: form.business_name,
+        contact_name: form.contact_name,
+        email: form.email,
+        phone: form.phone,
+        industry: form.industry,
+        location: form.location,
+        monthly_value: Number(form.monthly_value) || 0,
+        pipeline_stage: form.pipeline_stage,
+        user_id: user.id,
+      });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['clients'] }); toast.success('Client added'); onClose(); },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const handleCreateOpportunity = async () => {
+    const pipeline = activePipeline as 'new_leads' | 'sales' | 'onboarding';
+    const firstStage = PIPELINE_STAGES[pipeline][0].key;
+    createOpportunity.mutate({
+      pipeline,
+      stage: firstStage,
+      deal_value: Number(form.deal_value) || 0,
+      assigned_agent: form.assigned_agent || null,
+      notes: form.notes || form.business_name,
+    }, {
+      onSuccess: () => { toast.success('Opportunity created'); onClose(); },
+      onError: (e: any) => toast.error(e.message),
+    });
+  };
 
   const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
 
@@ -293,43 +515,64 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-[440px] bg-card border border-border rounded-xl p-6 animate-scale-in">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold">Add Client</h2>
+          <h2 className="text-lg font-bold">{isPipelineMode ? 'Add Opportunity' : 'Add Client'}</h2>
           <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
         <div className="space-y-3">
-          <div><Label className="text-xs">Business Name *</Label><Input value={form.business_name} onChange={e => set('business_name', e.target.value)} placeholder="Acme Corp" className="mt-1" /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Contact Name</Label><Input value={form.contact_name} onChange={e => set('contact_name', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Industry</Label><Input value={form.industry} onChange={e => set('industry', e.target.value)} className="mt-1" /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => set('email', e.target.value)} type="email" className="mt-1" /></div>
-            <div><Label className="text-xs">Phone</Label><Input value={form.phone} onChange={e => set('phone', e.target.value)} className="mt-1" /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Location</Label><Input value={form.location} onChange={e => set('location', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Monthly Value ($)</Label><Input value={form.monthly_value} onChange={e => set('monthly_value', e.target.value)} type="number" className="mt-1" /></div>
-          </div>
           <div>
-            <Label className="text-xs">Pipeline Stage</Label>
-            <Select value={form.pipeline_stage} onValueChange={(v) => set('pipeline_stage', v)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>{STAGES.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}</SelectContent>
-            </Select>
+            <Label className="text-xs">{isPipelineMode ? 'Name / Label *' : 'Business Name *'}</Label>
+            <Input value={isPipelineMode ? form.notes : form.business_name} onChange={e => set(isPipelineMode ? 'notes' : 'business_name', e.target.value)} placeholder={isPipelineMode ? 'Opportunity name' : 'Acme Corp'} className="mt-1" />
           </div>
+
+          {isPipelineMode ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Deal Value ($)</Label><Input value={form.deal_value} onChange={e => set('deal_value', e.target.value)} type="number" className="mt-1" /></div>
+                <div><Label className="text-xs">Assigned Agent</Label><Input value={form.assigned_agent} onChange={e => set('assigned_agent', e.target.value)} className="mt-1" placeholder="e.g. Sales" /></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Contact Name</Label><Input value={form.contact_name} onChange={e => set('contact_name', e.target.value)} className="mt-1" /></div>
+                <div><Label className="text-xs">Industry</Label><Input value={form.industry} onChange={e => set('industry', e.target.value)} className="mt-1" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => set('email', e.target.value)} type="email" className="mt-1" /></div>
+                <div><Label className="text-xs">Phone</Label><Input value={form.phone} onChange={e => set('phone', e.target.value)} className="mt-1" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Location</Label><Input value={form.location} onChange={e => set('location', e.target.value)} className="mt-1" /></div>
+                <div><Label className="text-xs">Monthly Value ($)</Label><Input value={form.monthly_value} onChange={e => set('monthly_value', e.target.value)} type="number" className="mt-1" /></div>
+              </div>
+              <div>
+                <Label className="text-xs">Pipeline Stage</Label>
+                <Select value={form.pipeline_stage} onValueChange={(v) => set('pipeline_stage', v)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{ALL_CLIENT_STAGES.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
         </div>
         <div className="flex gap-3 mt-6">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" disabled={!form.business_name.trim() || createMutation.isPending} onClick={() => createMutation.mutate()}>
-            {createMutation.isPending ? 'Adding...' : 'Add Client'}
-          </Button>
+          {isPipelineMode ? (
+            <Button className="flex-1" disabled={!form.notes.trim() || createOpportunity.isPending} onClick={handleCreateOpportunity}>
+              {createOpportunity.isPending ? 'Adding...' : 'Add Opportunity'}
+            </Button>
+          ) : (
+            <Button className="flex-1" disabled={!form.business_name.trim() || createClientMutation.isPending} onClick={() => createClientMutation.mutate()}>
+              {createClientMutation.isPending ? 'Adding...' : 'Add Client'}
+            </Button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Discovery Tab — embeds the ALIGN canvas for the selected client
+// ─── Discovery Tab ───
 function DiscoveryTab({ client, onSessionCreated, fullscreen, onToggleFullscreen }: {
   client: any;
   onSessionCreated: (sessionId: string) => void;
@@ -345,7 +588,6 @@ function DiscoveryTab({ client, onSessionCreated, fullscreen, onToggleFullscreen
     const session = createSession(client.business_name, client.industry || undefined);
     setLocalSessionId(session.id);
 
-    // Persist session_id to the client record if it's a real DB client
     if (user && !client.id.startsWith('m')) {
       await supabase.from('clients').update({ session_id: session.id }).eq('id', client.id);
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -372,7 +614,6 @@ function DiscoveryTab({ client, onSessionCreated, fullscreen, onToggleFullscreen
 
   return (
     <div className={cn("flex flex-col", fullscreen ? "fixed inset-0 z-[60] bg-background" : "h-[600px]")}>
-      {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 shrink-0">
         <span className="ai-label">Discovery — {client.business_name}</span>
         <div className="flex gap-1">
@@ -386,7 +627,6 @@ function DiscoveryTab({ client, onSessionCreated, fullscreen, onToggleFullscreen
           )}
         </div>
       </div>
-      {/* Embedded Canvas */}
       <div className="flex-1 overflow-hidden rounded-lg">
         <EmbeddedCanvas sessionId={localSessionId} compact hideReadiness />
       </div>

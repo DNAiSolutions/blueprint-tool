@@ -48,21 +48,33 @@ const App = () => (
               {/* Auth */}
               <Route path="/auth" element={<Auth />} />
 
-              {/* Staff-only routes (admin + rep) — clients auto-redirect to /portal */}
+              {/* Staff-only routes — clients auto-redirect to /portal */}
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/pipeline" element={<ProtectedRoute requireStaff><Pipeline /></ProtectedRoute>} />
               <Route path="/content" element={<ProtectedRoute requireStaff><Content /></ProtectedRoute>} />
               <Route path="/websites" element={<ProtectedRoute requireStaff><Websites /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute requireStaff><Leads /></ProtectedRoute>} />
               <Route path="/ai" element={<ProtectedRoute requireStaff><AICommand /></ProtectedRoute>} />
+
+              {/* Clients hub — nested sub-pages for health, onboarding, costs, templates */}
+              <Route path="/clients" element={<ProtectedRoute requireStaff><Pipeline /></ProtectedRoute>} />
+              <Route path="/clients/health" element={<ProtectedRoute requireStaff><Dashboard /></ProtectedRoute>} />
+              <Route path="/clients/onboarding" element={<ProtectedRoute requireStaff><Dashboard /></ProtectedRoute>} />
+              <Route path="/clients/costs" element={<ProtectedRoute requireStaff><Finances /></ProtectedRoute>} />
+              <Route path="/clients/templates" element={<ProtectedRoute requireStaff><Dashboard /></ProtectedRoute>} />
+
+              {/* Settings hub — absorbs automations, canvas, users */}
+              <Route path="/settings" element={<ProtectedRoute requireStaff><SettingsPage /></ProtectedRoute>} />
+              <Route path="/settings/automations" element={<ProtectedRoute requireStaff><Automations /></ProtectedRoute>} />
+              <Route path="/settings/canvas" element={<ProtectedRoute requireStaff><Canvas /></ProtectedRoute>} />
+              <Route path="/settings/canvas/:sessionId" element={<ProtectedRoute requireStaff><Canvas /></ProtectedRoute>} />
+              <Route path="/settings/users" element={<ProtectedRoute requireAdmin><UsersSettings /></ProtectedRoute>} />
+
+              {/* Legacy routes — keep working for bookmarks/links */}
               <Route path="/finances" element={<ProtectedRoute requireStaff><Finances /></ProtectedRoute>} />
               <Route path="/automations" element={<ProtectedRoute requireStaff><Automations /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute requireStaff><SettingsPage /></ProtectedRoute>} />
               <Route path="/canvas" element={<ProtectedRoute requireStaff><Canvas /></ProtectedRoute>} />
               <Route path="/canvas/:sessionId" element={<ProtectedRoute requireStaff><Canvas /></ProtectedRoute>} />
-
-              {/* Admin-only routes */}
-              <Route path="/settings/users" element={<ProtectedRoute requireAdmin><UsersSettings /></ProtectedRoute>} />
 
               {/* Client Portal routes */}
               <Route path="/portal" element={<ProtectedRoute requireClient><PortalDashboard /></ProtectedRoute>} />

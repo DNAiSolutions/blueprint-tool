@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Flag, Calendar, Tag } from 'lucide-react';
-import { sprintTasks, getAgent, getAgentBgClass, type SprintTask, type TaskColumn } from './mockData';
+import { Flag, Calendar, Tag, AlertTriangle } from 'lucide-react';
+import { useAgentTasks } from '@/hooks/useAgentTasks';
+import { sprintTasks as mockSprintTasks, getAgent, getAgentBgClass, type SprintTask, type TaskColumn } from './mockData';
 
 const columns: { key: TaskColumn; label: string; color: string }[] = [
   { key: 'backlog', label: 'Backlog', color: 'text-muted-foreground' },
@@ -16,7 +18,42 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
   low: { color: 'bg-muted text-muted-foreground border-border', label: 'LOW' },
 };
 
+// Map agent_tasks status -> TaskColumn
+function mapStatusToColumn(status: string): TaskColumn {
+  switch (status) {
+    case 'queued': return 'backlog';
+    case 'in_progress': return 'in_progress';
+    case 'review': return 'review';
+    case 'done': return 'done';
+    case 'failed':
+    case 'escalated':
+      return 'backlog'; // shown with red indicator
+    default: return 'backlog';
+  }
+}
+
 export function SprintTab() {
+  const { tasks: realTasks, loading } = useAgentTasks();
+
+  // Convert real agent_tasks into SprintTask shape, fall back to mock data
+  const sprintTasks: (SprintTask & { isErrorState?: boolean })[] = useMemo(() => {
+    if (realTasks.length === 0) {
+      return mockSprintTasks;
+    }
+
+    return realTasks.map((t) => ({
+      id: t.id,
+      title: t.task_type,
+      description: (t.input_payload as any)?.description || t.last_error || t.task_type,
+      priority: (t.priority || 'medium') as SprintTask['priority'],
+      agentId: t.agent_id,
+      column: mapStatusToColumn(t.status),
+      dueDate: t.completed_at ? new Date(t.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null,
+      tags: [t.status, ...(t.client_id ? ['client'] : [])],
+      isErrorState: t.status === 'failed' || t.status === 'escalated',
+    }));
+  }, [realTasks]);
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -25,6 +62,9 @@ export function SprintTab() {
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           <span>{sprintTasks.filter(t => t.column === 'in_progress').length} in progress</span>
           <span>{sprintTasks.filter(t => t.column === 'done').length} completed</span>
+          {realTasks.length > 0 && (
+            <span className="text-accent">Live</span>
+          )}
         </div>
       </div>
 
@@ -50,7 +90,7 @@ export function SprintTab() {
                 {/* Cards */}
                 <div className="flex-1 space-y-2">
                   {tasks.map(task => (
-                    <TaskCard key={task.id} task={task} />
+                    <TaskCard key={task.id} task={task} isErrorState={(task as any).isErrorState} />
                   ))}
                 </div>
               </div>
@@ -62,21 +102,25 @@ export function SprintTab() {
   );
 }
 
-function TaskCard({ task }: { task: SprintTask }) {
+function TaskCard({ task, isErrorState }: { task: SprintTask; isErrorState?: boolean }) {
   const agent = getAgent(task.agentId);
-  const priority = priorityConfig[task.priority];
+  const priority = priorityConfig[task.priority] || priorityConfig.medium;
 
   return (
     <div className={cn(
       'rounded-lg bg-[hsl(var(--surface-low))] border border-[hsl(var(--ghost-border)/0.1)] p-3 transition-all hover:border-[hsl(var(--ghost-border)/0.25)] cursor-default',
-      task.column === 'done' && 'opacity-60'
+      task.column === 'done' && 'opacity-60',
+      isErrorState && 'border-destructive/30'
     )}>
       {/* Priority + Agent */}
       <div className="flex items-center justify-between mb-1.5">
-        <span className={cn('inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-mono font-bold border', priority.color)}>
-          <Flag className="h-2 w-2 mr-0.5" />
-          {priority.label}
-        </span>
+        <div className="flex items-center gap-1">
+          {isErrorState && <AlertTriangle className="h-3 w-3 text-destructive" />}
+          <span className={cn('inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-mono font-bold border', priority.color)}>
+            <Flag className="h-2 w-2 mr-0.5" />
+            {priority.label}
+          </span>
+        </div>
         {agent && (
           <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-medium border', getAgentBgClass(agent.id))}>
             {agent.shortName}

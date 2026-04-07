@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { KPICard } from '@/components/shared/KPICard';
@@ -5,6 +6,8 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useAgentTasks } from '@/hooks/useAgentTasks';
+import { usePipelineOps } from '@/hooks/usePipelineOps';
 import { cn } from '@/lib/utils';
 import {
   Users, FileText, DollarSign, Radio, Check, Bot, ArrowRight, Plus, Bell, Search,
@@ -53,10 +56,28 @@ const stages = [
 
 const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+function formatDuration(ms: number | null): string {
+  if (!ms) return '—';
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(0)}s`;
+  return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+  return `${Math.floor(hrs / 24)} day ago`;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // ─── Clients ───
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
@@ -65,9 +86,67 @@ export default function Dashboard() {
     },
   });
 
+  // ─── Agent Tasks (for Today's Tasks) ───
+  const { tasks: realAgentTasks } = useAgentTasks();
+  const pendingTasks = useMemo(() => {
+    if (realAgentTasks.length === 0) return null; // signal to use mock
+    return realAgentTasks.filter(t => t.status !== 'done');
+  }, [realAgentTasks]);
+
+  const taskList = useMemo(() => {
+    if (!pendingTasks) return mockTasks;
+    return pendingTasks.slice(0, 6).map(t => ({
+      id: t.id,
+      desc: t.task_type + ((t.input_payload as any)?.description ? ` — ${(t.input_payload as any).description}` : ''),
+      client: t.client_id ? 'Client' : 'DigitalDNA',
+      module: t.agent_id === 'content' ? 'Content' : t.agent_id === 'sales' ? 'Leads' : t.agent_id === 'dev' ? 'Websites' : 'Pipeline',
+      due: 'Today',
+      done: t.status === 'done',
+    }));
+  }, [pendingTasks]);
+
+  // ─── AI Logs (for Recent AI Activity) ───
+  const { data: realAILogs = [] } = useQuery({
+    queryKey: ['ai_logs_dashboard'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ai_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const aiLogs = useMemo(() => {
+    if (realAILogs.length === 0) return mockAILogs;
+    return realAILogs.map(log => ({
+      id: log.id,
+      action: log.action,
+      module: log.module || 'System',
+      status: log.status,
+      time: formatTimeAgo(log.created_at),
+      duration: formatDuration(log.duration_ms),
+    }));
+  }, [realAILogs]);
+
+  // ─── Pipeline Snapshot ───
+  const { opportunities: allOpportunities } = usePipelineOps();
+
   const activeClients = clients.filter((c: any) => ['live', 'produce', 'build'].includes(c.pipeline_stage)).length;
   const totalMRR = clients.reduce((sum: number, c: any) => sum + (Number(c.monthly_value) || 0), 0);
-  const stageCount = (stage: string) => clients.filter((c: any) => c.pipeline_stage === stage).length;
+
+  const stageCount = (stage: string) => {
+    // If we have pipeline_opportunities data, aggregate across all pipelines
+    if (allOpportunities.length > 0) {
+      // Map old stage names to possible pipeline_opportunities stages
+      return allOpportunities.filter((o) => o.stage === stage).length;
+    }
+    // Fall back to client pipeline_stage counts
+    const fromClients = clients.filter((c: any) => c.pipeline_stage === stage).length;
+    return fromClients || (stage === 'leads' ? 2 : stage === 'audit' ? 1 : stage === 'strategy' ? 1 : stage === 'build' ? 2 : stage === 'produce' ? 2 : 2);
+  };
 
   return (
     <AppLayout>
@@ -96,7 +175,7 @@ export default function Dashboard() {
               <Button variant="outline" size="sm" className="gap-1 text-xs h-7"><Plus className="h-3 w-3" /> Add</Button>
             </div>
             <div className="space-y-0">
-              {mockTasks.map((t) => (
+              {taskList.map((t) => (
                 <div key={t.id} className="flex items-center gap-3 py-2.5 border-b border-[hsl(var(--ghost-border)/0.1)] cursor-pointer hover:bg-[hsl(var(--surface-high))] transition-colors rounded" onClick={() => navigate(`/${t.module.toLowerCase()}`)}>
                   <div className={cn(
                     'w-[18px] h-[18px] rounded border-2 flex items-center justify-center shrink-0',
@@ -146,7 +225,7 @@ export default function Dashboard() {
             <span className="text-sm font-semibold block mb-3">Pipeline Snapshot</span>
             <div className="space-y-1.5">
               {stages.map((stage) => {
-                const count = stageCount(stage.key) || (stage.key === 'leads' ? 2 : stage.key === 'audit' ? 1 : stage.key === 'strategy' ? 1 : stage.key === 'build' ? 2 : stage.key === 'produce' ? 2 : 2);
+                const count = stageCount(stage.key);
                 return (
                   <div key={stage.key} className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground w-16 text-right">{stage.label}</span>
@@ -195,7 +274,7 @@ export default function Dashboard() {
             <span className="text-sm font-semibold flex items-center gap-2"><Bot className="h-4 w-4" /> Recent AI Activity</span>
             <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => navigate('/ai')}>View All <ArrowRight className="h-3 w-3" /></Button>
           </div>
-          {mockAILogs.map((l) => (
+          {aiLogs.map((l) => (
             <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[hsl(var(--ghost-border)/0.1)]">
               <StatusBadge status={l.status} />
               <span className="flex-1 text-[13px]">{l.action}</span>
