@@ -44,11 +44,13 @@ const mockClients = [
 
 export default function Pipeline() {
   const { user } = useAuth();
+  const { createSession } = useSession();
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [drawerTab, setDrawerTab] = useState('overview');
   const [viewMode, setViewMode] = useState('kanban');
+  const [discoveryFullscreen, setDiscoveryFullscreen] = useState(false);
 
   const { data: dbClients = [] } = useQuery({
     queryKey: ['clients'],
