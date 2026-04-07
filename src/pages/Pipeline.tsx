@@ -225,12 +225,15 @@ export default function Pipeline() {
                 </div>
               )}
               {drawerTab === 'discovery' && (
-                <div className="flex flex-col items-center justify-center h-[300px] border-2 border-dashed border-border rounded-lg">
-                  <GitBranch className="h-10 w-10 text-accent mb-3" strokeWidth={1.5} />
-                  <div className="text-base font-semibold mb-1">ALIGN Discovery Canvas</div>
-                  <div className="text-[13px] text-muted-foreground text-center max-w-[280px] mb-4">Existing ALIGN canvas with nodes, connectors, questions, and funnel mapping loads here</div>
-                  <Button size="sm" className="gap-1.5"><Play className="h-3.5 w-3.5" /> Start Discovery Session</Button>
-                </div>
+                <DiscoveryTab
+                  client={selectedClient}
+                  onSessionCreated={(sessionId) => {
+                    // Update the client's session_id in the local state
+                    setSelectedClient((prev: any) => prev ? { ...prev, session_id: sessionId } : prev);
+                  }}
+                  fullscreen={discoveryFullscreen}
+                  onToggleFullscreen={() => setDiscoveryFullscreen(!discoveryFullscreen)}
+                />
               )}
               {drawerTab === 'readiness' && (
                 <div className="space-y-4">
