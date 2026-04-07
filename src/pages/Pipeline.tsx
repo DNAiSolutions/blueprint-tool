@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -7,14 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useSession } from '@/hooks/useSession';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
   Plus, X, Globe, Film, MessageSquare, BarChart3, GitBranch, GripVertical,
-  Check, Play, Bot, Eye, Target, CreditCard, FileText,
+  Check, Play, Bot, Eye, Target, CreditCard, FileText, Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmbeddedCanvas } from '@/components/canvas/EmbeddedCanvas';
 
 const STAGES = [
   { key: 'leads', label: 'Leads', color: 'hsl(var(--muted-foreground))' },
