@@ -64,6 +64,7 @@ export type Database = {
           email: string | null
           id: string
           industry: string | null
+          is_internal: boolean
           location: string | null
           monthly_value: number | null
           phone: string | null
@@ -80,6 +81,7 @@ export type Database = {
           email?: string | null
           id?: string
           industry?: string | null
+          is_internal?: boolean
           location?: string | null
           monthly_value?: number | null
           phone?: string | null
@@ -96,6 +98,7 @@ export type Database = {
           email?: string | null
           id?: string
           industry?: string | null
+          is_internal?: boolean
           location?: string | null
           monthly_value?: number | null
           phone?: string | null
