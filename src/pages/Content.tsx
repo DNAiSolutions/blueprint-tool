@@ -4,10 +4,11 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { useClientContext } from '@/hooks/useClientContext';
+import { useContentApproval } from '@/hooks/useContentApproval';
 import { cn } from '@/lib/utils';
 import {
   Plus, ChevronLeft, ChevronRight, Filter, Play, Copy, Image,
-  Eye, CheckCircle, FileText,
+  Eye, CheckCircle, FileText, CheckCircle2, RotateCcw, Clock,
 } from 'lucide-react';
 
 const mockScripts = [
@@ -45,10 +46,21 @@ const productionJobs = [
   { status: 'error', title: 'Industry Spotlight HVAC', client: 'DigitalDNA', clientTag: 'internal', type: 'Video', provider: 'HeyGen', eta: 'Failed' },
 ];
 
+function getAutoApproveCountdown(autoApproveAt: string | null): string | null {
+  if (!autoApproveAt) return null;
+  const now = new Date();
+  const target = new Date(autoApproveAt);
+  const diffMs = target.getTime() - now.getTime();
+  if (diffMs <= 0) return 'soon';
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return `${diffDays}d`;
+}
+
 export default function Content() {
   const [subTab, setSubTab] = useState('calendar');
   const tabs = ['calendar', 'scripts', 'production', 'review', 'published', 'templates'];
   const { selectedClient, internalClient } = useClientContext();
+  const { approvals, loading: approvalsLoading, approve, requestRevision } = useContentApproval();
 
   // Filter helper: match by client name (mock data uses names, real data would use client_id)
   const matchesContext = (clientName: string) => {
@@ -155,10 +167,85 @@ export default function Content() {
           </div>
         )}
 
-        {/* Other tabs */}
-        {!['calendar', 'scripts', 'production'].includes(subTab) && (
+        {/* Review tab — content approval queue */}
+        {subTab === 'review' && (
+          <div>
+            {approvalsLoading ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">Loading approvals...</div>
+            ) : approvals.length === 0 ? (
+              <EmptyState
+                icon={Eye}
+                title="No content approvals yet"
+                description="When scripts are submitted for client approval, they will appear here."
+              />
+            ) : (
+              <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <div className="grid grid-cols-[2fr_1fr_100px_60px_100px_140px] px-4 py-2.5 border-b border-border text-[11px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span>Script</span>
+                  <span>Client</span>
+                  <span>Status</span>
+                  <span>Rev</span>
+                  <span>Auto-Approve</span>
+                  <span>Actions</span>
+                </div>
+                {approvals.map((a, i) => {
+                  const countdown = getAutoApproveCountdown(a.auto_approve_at);
+                  const handleApprove = async () => { await approve(a.id); };
+                  const handleRevise = async () => {
+                    const notes = window.prompt('Revision notes:');
+                    if (notes) await requestRevision(a.id, notes);
+                  };
+
+                  return (
+                    <div key={a.id} className={cn(
+                      'grid grid-cols-[2fr_1fr_100px_60px_100px_140px] px-4 py-3 items-center text-[13px]',
+                      i % 2 === 0 ? 'bg-card' : 'bg-background',
+                    )}>
+                      <span className="font-medium truncate">
+                        {a.script_id ? `Script ${a.script_id.slice(0, 8)}...` : 'Content piece'}
+                      </span>
+                      <span className="text-muted-foreground truncate">
+                        {a.client_id ? a.client_id.slice(0, 8) + '...' : '--'}
+                      </span>
+                      <StatusBadge status={a.status === 'revision_requested' ? 'in_review' : a.status} />
+                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                        <RotateCcw className="h-2.5 w-2.5" /> {a.revision_number}/3
+                      </span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                        {countdown ? <><Clock className="h-2.5 w-2.5" /> {countdown}</> : '--'}
+                      </span>
+                      <div className="flex gap-1.5">
+                        {a.status === 'pending' && (
+                          <>
+                            <Button size="sm" className="h-6 text-[10px] gap-0.5" onClick={handleApprove}>
+                              <CheckCircle2 className="h-2.5 w-2.5" /> Approve
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-6 text-[10px] gap-0.5" onClick={handleRevise}>
+                              <RotateCcw className="h-2.5 w-2.5" /> Revise
+                            </Button>
+                          </>
+                        )}
+                        {(a.status === 'approved' || a.status === 'auto_approved') && (
+                          <span className="flex items-center gap-1 text-xs text-success">
+                            <CheckCircle2 className="h-3 w-3" /> Done
+                          </span>
+                        )}
+                        {a.status === 'escalated' && (
+                          <StatusBadge status="error" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Other tabs (published, templates) */}
+        {!['calendar', 'scripts', 'production', 'review'].includes(subTab) && (
           <EmptyState
-            icon={subTab === 'review' ? Eye : subTab === 'published' ? CheckCircle : FileText}
+            icon={subTab === 'published' ? CheckCircle : FileText}
             title={`${subTab.charAt(0).toUpperCase() + subTab.slice(1)} view`}
             actionLabel={`Open ${subTab.charAt(0).toUpperCase() + subTab.slice(1)}`}
             onAction={() => {}}

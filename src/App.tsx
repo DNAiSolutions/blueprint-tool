@@ -22,6 +22,7 @@ import Canvas from "./pages/Canvas";
 import UsersSettings from "./pages/settings/UsersSettings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import WebhookLog from "./pages/clients/WebhookLog";
 
 // Client Portal pages
 import PortalDashboard from "./pages/portal/PortalDashboard";
@@ -62,6 +63,7 @@ const App = () => (
               <Route path="/clients/onboarding" element={<ProtectedRoute requireStaff><Dashboard /></ProtectedRoute>} />
               <Route path="/clients/costs" element={<ProtectedRoute requireStaff><Finances /></ProtectedRoute>} />
               <Route path="/clients/templates" element={<ProtectedRoute requireStaff><Dashboard /></ProtectedRoute>} />
+              <Route path="/clients/webhooks" element={<ProtectedRoute requireStaff><WebhookLog /></ProtectedRoute>} />
 
               {/* Settings hub — absorbs automations, canvas, users */}
               <Route path="/settings" element={<ProtectedRoute requireStaff><SettingsPage /></ProtectedRoute>} />
