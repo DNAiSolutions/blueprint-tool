@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -19,9 +20,24 @@ import {
   Shield,
   Workflow,
   Zap,
+  Bell,
+  Users,
+  Heart,
+  Webhook,
+  Receipt,
+  BookTemplate,
+  ClipboardList,
+  // Portal icons
+  Eye,
+  Palette,
+  GraduationCap,
+  CreditCard,
+  Star,
+  Upload,
 } from 'lucide-react';
 
-const navItems = [
+// Admin/rep navigation
+const adminNav = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { id: 'pipeline', label: 'Pipeline', icon: GitBranch, href: '/pipeline' },
   { id: 'canvas', label: 'Automation Builder', icon: Workflow, href: '/canvas' },
@@ -31,20 +47,42 @@ const navItems = [
   { id: 'leads', label: 'Leads', icon: Radio, href: '/leads' },
   { id: 'ai', label: 'AI Command', icon: Bot, href: '/ai' },
   { id: 'finances', label: 'Finances', icon: DollarSign, href: '/finances' },
+  { id: 'divider-1', label: '', icon: null, href: '' },
+  { id: 'onboarding', label: 'Onboarding', icon: ClipboardList, href: '/onboarding' },
+  { id: 'health', label: 'Client Health', icon: Heart, href: '/health' },
+  { id: 'costs', label: 'Cost Ledger', icon: Receipt, href: '/costs' },
+  { id: 'templates', label: 'Templates', icon: BookTemplate, href: '/templates' },
+  { id: 'webhooks', label: 'Webhooks', icon: Webhook, href: '/webhooks' },
+  { id: 'divider-2', label: '', icon: null, href: '' },
   { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+];
+
+// Client portal navigation
+const clientNav = [
+  { id: 'portal', label: 'Dashboard', icon: LayoutDashboard, href: '/portal' },
+  { id: 'portal-content', label: 'Content', icon: Film, href: '/portal/content' },
+  { id: 'portal-website', label: 'My Website', icon: Globe, href: '/portal/website' },
+  { id: 'portal-brand', label: 'Brand & Assets', icon: Palette, href: '/portal/brand' },
+  { id: 'portal-onboarding', label: 'Onboarding', icon: ClipboardList, href: '/portal/onboarding' },
+  { id: 'portal-education', label: 'Education', icon: GraduationCap, href: '/portal/education' },
+  { id: 'portal-billing', label: 'Billing', icon: CreditCard, href: '/portal/billing' },
+  { id: 'portal-reviews', label: 'Reviews', icon: Star, href: '/portal/reviews' },
 ];
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut, isAdmin, role } = useAuth();
+  const { user, signOut, isAdmin, isClient, role } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const initials = displayName.slice(0, 2).toUpperCase();
 
+  const navItems = isClient ? clientNav : adminNav;
+
   const isActive = (href: string) => {
-    if (href === '/') return location.pathname === '/';
+    if (href === '/' || href === '/portal') return location.pathname === href;
     return location.pathname.startsWith(href);
   };
 
@@ -66,14 +104,23 @@ export function Sidebar() {
         ) : (
           <div>
             <span className="text-base font-black tracking-tighter text-primary uppercase">DigitalDNA</span>
-            <span className="block text-[10px] font-mono text-muted-foreground tracking-widest uppercase">AI OS v1.0</span>
+            <span className="block text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
+              {isClient ? 'Client Portal' : 'AI OS v1.0'}
+            </span>
           </div>
         )}
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto scrollbar-thin">
         {navItems.map((item) => {
+          // Divider
+          if (item.icon === null) {
+            return collapsed ? null : (
+              <div key={item.id} className="my-2 mx-3 h-px bg-[hsl(var(--ghost-border)/0.15)]" />
+            );
+          }
+
           const Icon = item.icon;
           const active = isActive(item.href);
           return (
@@ -95,8 +142,29 @@ export function Sidebar() {
         })}
       </nav>
 
+      {/* Notification Bell */}
+      <div className="px-2 py-1">
+        <button
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--surface-high))] transition-colors relative',
+            collapsed && 'justify-center px-0'
+          )}
+        >
+          <Bell className="h-4 w-4" />
+          {!collapsed && <span>Notifications</span>}
+          {unreadCount > 0 && (
+            <span className={cn(
+              'flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-accent text-accent-foreground text-[9px] font-bold',
+              collapsed ? 'absolute -top-0.5 -right-0.5' : 'ml-auto'
+            )}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Collapse Toggle */}
-      <div className="px-2 py-2">
+      <div className="px-2 py-1">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className={cn(

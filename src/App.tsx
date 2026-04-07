@@ -7,6 +7,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { SessionProvider } from "@/hooks/useSession";
 import { ClientContextProvider } from "@/hooks/useClientContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+
+// Admin / Staff pages
 import Dashboard from "./pages/Dashboard";
 import Pipeline from "./pages/Pipeline";
 import Content from "./pages/Content";
@@ -21,6 +23,16 @@ import UsersSettings from "./pages/settings/UsersSettings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
+// Client Portal pages
+import PortalDashboard from "./pages/portal/PortalDashboard";
+import PortalContent from "./pages/portal/PortalContent";
+import PortalWebsite from "./pages/portal/PortalWebsite";
+import PortalBrand from "./pages/portal/PortalBrand";
+import PortalOnboarding from "./pages/portal/PortalOnboarding";
+import PortalBilling from "./pages/portal/PortalBilling";
+import PortalReviews from "./pages/portal/PortalReviews";
+import PortalEducation from "./pages/portal/PortalEducation";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -33,19 +45,36 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Auth */}
               <Route path="/auth" element={<Auth />} />
+
+              {/* Staff-only routes (admin + rep) — clients auto-redirect to /portal */}
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
-              <Route path="/content" element={<ProtectedRoute><Content /></ProtectedRoute>} />
-              <Route path="/websites" element={<ProtectedRoute><Websites /></ProtectedRoute>} />
-              <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
-              <Route path="/ai" element={<ProtectedRoute><AICommand /></ProtectedRoute>} />
-              <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
-              <Route path="/automations" element={<ProtectedRoute><Automations /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/canvas" element={<ProtectedRoute><Canvas /></ProtectedRoute>} />
-              <Route path="/canvas/:sessionId" element={<ProtectedRoute><Canvas /></ProtectedRoute>} />
+              <Route path="/pipeline" element={<ProtectedRoute requireStaff><Pipeline /></ProtectedRoute>} />
+              <Route path="/content" element={<ProtectedRoute requireStaff><Content /></ProtectedRoute>} />
+              <Route path="/websites" element={<ProtectedRoute requireStaff><Websites /></ProtectedRoute>} />
+              <Route path="/leads" element={<ProtectedRoute requireStaff><Leads /></ProtectedRoute>} />
+              <Route path="/ai" element={<ProtectedRoute requireStaff><AICommand /></ProtectedRoute>} />
+              <Route path="/finances" element={<ProtectedRoute requireStaff><Finances /></ProtectedRoute>} />
+              <Route path="/automations" element={<ProtectedRoute requireStaff><Automations /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute requireStaff><SettingsPage /></ProtectedRoute>} />
+              <Route path="/canvas" element={<ProtectedRoute requireStaff><Canvas /></ProtectedRoute>} />
+              <Route path="/canvas/:sessionId" element={<ProtectedRoute requireStaff><Canvas /></ProtectedRoute>} />
+
+              {/* Admin-only routes */}
               <Route path="/settings/users" element={<ProtectedRoute requireAdmin><UsersSettings /></ProtectedRoute>} />
+
+              {/* Client Portal routes */}
+              <Route path="/portal" element={<ProtectedRoute requireClient><PortalDashboard /></ProtectedRoute>} />
+              <Route path="/portal/content" element={<ProtectedRoute requireClient><PortalContent /></ProtectedRoute>} />
+              <Route path="/portal/website" element={<ProtectedRoute requireClient><PortalWebsite /></ProtectedRoute>} />
+              <Route path="/portal/brand" element={<ProtectedRoute requireClient><PortalBrand /></ProtectedRoute>} />
+              <Route path="/portal/onboarding" element={<ProtectedRoute requireClient><PortalOnboarding /></ProtectedRoute>} />
+              <Route path="/portal/billing" element={<ProtectedRoute requireClient><PortalBilling /></ProtectedRoute>} />
+              <Route path="/portal/reviews" element={<ProtectedRoute requireClient><PortalReviews /></ProtectedRoute>} />
+              <Route path="/portal/education" element={<ProtectedRoute requireClient><PortalEducation /></ProtectedRoute>} />
+
+              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
