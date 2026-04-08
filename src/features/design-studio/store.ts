@@ -10,6 +10,13 @@ interface DesignStudioState {
   // ---------- CURRENT PROJECT ----------
   project: DesignProject | null;
   setProject: (project: DesignProject | null) => void;
+  /** Patch the current project without resetting history — used after save */
+  updateProjectMeta: (patch: Partial<DesignProject>) => void;
+  renameProject: (name: string) => void;
+
+  // ---------- DIRTY STATE ----------
+  dirty: boolean;
+  setDirty: (dirty: boolean) => void;
 
   // ---------- SELECTION ----------
   selectedCardId: string | null;
@@ -76,6 +83,7 @@ const initialState = {
   activeBrandKitId: null,
   history: [],
   historyIndex: -1,
+  dirty: false,
 };
 
 export const useDesignStore = create<DesignStudioState>((set, get) => ({
@@ -89,7 +97,22 @@ export const useDesignStore = create<DesignStudioState>((set, get) => ({
       // Auto-select first card on open so the Layers panel has something to show
       selectedCardId: project?.cards[0]?.id ?? null,
       selectedLayerId: null,
+      dirty: false,
     }),
+
+  updateProjectMeta: (patch) => {
+    const { project } = get();
+    if (!project) return;
+    set({ project: { ...project, ...patch } });
+  },
+
+  renameProject: (name) => {
+    const { project } = get();
+    if (!project) return;
+    set({ project: { ...project, name }, dirty: true });
+  },
+
+  setDirty: (dirty) => set({ dirty }),
   selectCard: (id) => set({ selectedCardId: id, selectedLayerId: null }),
   selectLayer: (cardId, layerId) => set({ selectedCardId: cardId, selectedLayerId: layerId }),
 
@@ -296,7 +319,7 @@ export const useDesignStore = create<DesignStudioState>((set, get) => ({
     const trimmed = history.slice(0, historyIndex + 1);
     const next = [...trimmed, JSON.parse(JSON.stringify(project))];
     if (next.length > MAX_HISTORY) next.shift();
-    set({ history: next, historyIndex: next.length - 1 });
+    set({ history: next, historyIndex: next.length - 1, dirty: true });
   },
 
   undo: () => {

@@ -174,6 +174,7 @@ export function CardRenderer({ card }: CardRendererProps) {
       {/* The card itself — rendered at true resolution; parent scales it */}
       <div
         ref={cardRef}
+        data-card-export={card.id}
         className={cn(
           'relative overflow-hidden bg-white shadow-2xl transition-shadow',
           isCardSelected && 'ring-2 ring-accent ring-offset-4 ring-offset-transparent',

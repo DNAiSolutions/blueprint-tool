@@ -66,10 +66,17 @@ export function useDesignProjects(projectId?: string) {
   });
 
   // ---------- SAVE PROJECT ----------
+  // Handles first-save correctly: sample-/draft- IDs are local-only, so we
+  // drop the id field and let Supabase assign a UUID. Subsequent saves use
+  // the real UUID returned from the first insert.
   const saveProject = useMutation({
     mutationFn: async (project: DesignProject) => {
-      const payload = {
-        id: project.id,
+      const isLocalId =
+        project.id.startsWith('sample-') ||
+        project.id.startsWith('draft-') ||
+        project.id.startsWith('local-');
+
+      const base: Record<string, unknown> = {
         project_id: project.projectId,
         brand_kit_id: project.brandKitId,
         name: project.name,
@@ -78,9 +85,12 @@ export function useDesignProjects(projectId?: string) {
         thumbnail_url: project.thumbnailUrl ?? null,
         updated_at: new Date().toISOString(),
       };
+
+      if (!isLocalId) base.id = project.id;
+
       const { data, error } = await supabase
         .from('design_projects')
-        .upsert(payload)
+        .upsert(base)
         .select()
         .single();
       if (error) throw error;

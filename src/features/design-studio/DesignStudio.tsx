@@ -103,7 +103,7 @@ export function DesignStudio({ projectId }: DesignStudioProps) {
   // Active project view — 3-panel canvas layout
   return (
     <div className="h-full flex flex-col bg-[hsl(var(--surface-low))]">
-      <DesignToolbar />
+      <DesignToolbar scopeProjectId={projectId} />
       <div className="flex-1 flex overflow-hidden">
         <LeftSidebar />
         <CanvasArea />
