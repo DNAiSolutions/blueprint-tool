@@ -2,6 +2,10 @@ import { useDesignStore } from '../store';
 import { cn } from '@/lib/utils';
 import { Layers, Image, Palette, Type, Sparkles } from 'lucide-react';
 import { LayersPanel } from './LayersPanel';
+import { AssetsPanel } from './panels/AssetsPanel';
+import { BrandPanel } from './panels/BrandPanel';
+import { FontsPanel } from './panels/FontsPanel';
+import { EffectsPanel } from './panels/EffectsPanel';
 
 const TABS = [
   { id: 'layers' as const, label: 'Layers', icon: Layers },
@@ -50,26 +54,4 @@ export function LeftSidebar() {
       </div>
     </aside>
   );
-}
-
-function PanelStub({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="text-center py-8 px-2">
-      <p className="text-xs font-semibold mb-1">{title}</p>
-      <p className="text-[11px] text-muted-foreground/70">{description}</p>
-    </div>
-  );
-}
-
-function AssetsPanel() {
-  return <PanelStub title="Assets" description="Paste Nano Banana / Kling URLs or upload files to use in your designs." />;
-}
-function BrandPanel() {
-  return <PanelStub title="Brand" description="Color swatches and fonts from the active brand kit." />;
-}
-function FontsPanel() {
-  return <PanelStub title="Fonts" description="Search Google Fonts and apply to text layers." />;
-}
-function EffectsPanel() {
-  return <PanelStub title="Effects" description="Gradients, liquid glass, noise, vignette, glitch." />;
 }
