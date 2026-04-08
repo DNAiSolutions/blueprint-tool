@@ -1,15 +1,37 @@
 // CanvasArea — the middle viewport. Renders the active project's cards at
 // true resolution (1080×1080 etc.) and scales the whole group by the current
 // zoom. Clicking empty space deselects.
+//
+// Layout note: `transform: scale()` does not change layout box size, so we
+// wrap the scaled group in a fixed-size container whose dimensions reflect
+// the scaled visible size. That lets the parent flex-center place the cards
+// at the actual viewport center instead of centering a full-resolution box.
 
 import { useDesignStore } from '../store';
 import { CardRenderer } from './CardRenderer';
 import { Frame } from 'lucide-react';
 
+// Horizontal gap between cards in the layout row (matches Tailwind `gap-10`).
+const CARD_GAP = 40;
+// Extra vertical room for the `CARD 1 · 1080×1080` label above each card.
+const CARD_LABEL_SPACE = 32;
+
 export function CanvasArea() {
   const project = useDesignStore((s) => s.project);
   const zoom = useDesignStore((s) => s.zoom);
   const selectCard = useDesignStore((s) => s.selectCard);
+
+  // Pre-compute the total unscaled footprint of the card row so we can
+  // reserve exactly that much layout space after scaling.
+  const cards = project?.cards ?? [];
+  const totalW = cards.reduce(
+    (acc, c, i) => acc + c.width + (i > 0 ? CARD_GAP : 0),
+    0,
+  );
+  const totalH = cards.reduce((acc, c) => Math.max(acc, c.height), 0);
+
+  const scaledW = totalW * zoom;
+  const scaledH = (totalH + CARD_LABEL_SPACE) * zoom;
 
   return (
     <div
@@ -25,15 +47,31 @@ export function CanvasArea() {
         }}
       />
 
-      <div className="min-h-full min-w-full flex items-center justify-center p-24">
-        {project && project.cards.length > 0 ? (
+      <div className="min-h-full min-w-full flex items-center justify-center p-16">
+        {project && cards.length > 0 ? (
+          // Outer sized to the scaled visible area so flex-center lands
+          // exactly at the viewport center.
           <div
-            className="flex gap-10 items-start"
-            style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+            style={{ width: scaledW, height: scaledH }}
+            className="relative"
           >
-            {project.cards.map((card) => (
-              <CardRenderer key={card.id} card={card} />
-            ))}
+            {/* Inner holds the unscaled cards and gets transformed from its
+                top-left corner to match the outer's layout box. */}
+            <div
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: 'top left',
+                width: totalW,
+                height: totalH + CARD_LABEL_SPACE,
+              }}
+              className="absolute top-0 left-0"
+            >
+              <div className="flex gap-10 items-start">
+                {cards.map((card) => (
+                  <CardRenderer key={card.id} card={card} />
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="text-center">

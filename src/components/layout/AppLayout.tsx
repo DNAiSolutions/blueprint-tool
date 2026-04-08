@@ -8,9 +8,9 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, hideContextBar }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex h-screen w-full bg-background overflow-hidden">
       <Sidebar />
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {!hideContextBar && <ContextBar />}
         {children}
       </main>
