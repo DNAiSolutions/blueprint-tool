@@ -1,8 +1,9 @@
 // Design Studio — root component
-// 3-panel layout: left sidebar (tabs) | center canvas | right inspector
-// This is the Phase 1 skeleton. Canvas rendering and layer system come in Commit 2.
+// 3-panel layout: left sidebar (tabs) | center canvas | right inspector.
+// Commit 2 adds real canvas interactions (layer render, drag, resize,
+// keyboard shortcuts) and a CFA LaPlace sample project.
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useDesignStore } from './store';
 import { useDesignProjects } from './useDesignProjects';
 import { DesignToolbar } from './components/DesignToolbar';
@@ -10,8 +11,12 @@ import { LeftSidebar } from './components/LeftSidebar';
 import { CanvasArea } from './components/CanvasArea';
 import { RightInspector } from './components/RightInspector';
 import { ProjectGrid } from './components/ProjectGrid';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { buildSampleProject } from './sample-project';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CARD_DIMENSIONS } from './types';
+import type { Card, DesignProject, SolidLayer } from './types';
 
 interface DesignStudioProps {
   /** Optional: scope this Design Studio instance to a specific client project */
@@ -20,11 +25,15 @@ interface DesignStudioProps {
 
 export function DesignStudio({ projectId }: DesignStudioProps) {
   const project = useDesignStore((s) => s.project);
+  const setProject = useDesignStore((s) => s.setProject);
   const setBrandKits = useDesignStore((s) => s.setBrandKits);
   const setActiveBrandKit = useDesignStore((s) => s.setActiveBrandKit);
   const activeBrandKitId = useDesignStore((s) => s.activeBrandKitId);
 
   const { brandKits, designProjects, loading } = useDesignProjects(projectId);
+
+  // Keyboard shortcuts: undo/redo, delete, duplicate, arrow-nudge
+  useKeyboardShortcuts();
 
   // Sync brand kits into the store once loaded
   useEffect(() => {
@@ -34,6 +43,40 @@ export function DesignStudio({ projectId }: DesignStudioProps) {
       setActiveBrandKit(defaultKit.id);
     }
   }, [brandKits, activeBrandKitId, setBrandKits, setActiveBrandKit]);
+
+  const handleLoadSample = () => setProject(buildSampleProject());
+
+  const handleCreateBlank = () => {
+    const now = new Date().toISOString();
+    const dims = CARD_DIMENSIONS['feed-square'];
+    const bg: SolidLayer = {
+      id: `bg-${Date.now()}`,
+      type: 'solid',
+      color: '#F5F1E8',
+      visible: true,
+      locked: true,
+    };
+    const blankCard: Card = {
+      id: `card-${Date.now()}`,
+      name: 'Card 1',
+      format: 'feed-square',
+      width: dims.w,
+      height: dims.h,
+      background: bg,
+      layers: [],
+    };
+    const blank: DesignProject = {
+      id: `draft-${Date.now()}`,
+      projectId: projectId ?? null,
+      name: 'Untitled design',
+      brandKitId: activeBrandKitId,
+      layout: 'single',
+      cards: [blankCard],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setProject(blank);
+  };
 
   // Landing state — no project open
   if (!project) {
@@ -46,7 +89,12 @@ export function DesignStudio({ projectId }: DesignStudioProps) {
     }
 
     if (designProjects.length === 0) {
-      return <EmptyDesignStudio projectId={projectId} />;
+      return (
+        <EmptyDesignStudio
+          onCreate={handleCreateBlank}
+          onLoadSample={handleLoadSample}
+        />
+      );
     }
 
     return <ProjectGrid projects={designProjects} />;
@@ -65,7 +113,13 @@ export function DesignStudio({ projectId }: DesignStudioProps) {
   );
 }
 
-function EmptyDesignStudio({ projectId }: { projectId?: string }) {
+function EmptyDesignStudio({
+  onCreate,
+  onLoadSample,
+}: {
+  onCreate: () => void;
+  onLoadSample: () => void;
+}) {
   return (
     <div className="h-full flex items-center justify-center p-12">
       <div className="max-w-md text-center">
@@ -77,8 +131,10 @@ function EmptyDesignStudio({ projectId }: { projectId?: string }) {
           Build branded social posts for your clients in minutes. Stack layers, apply effects, and export in one click.
         </p>
         <div className="flex gap-2 justify-center">
-          <Button size="sm">Create new project</Button>
-          <Button variant="outline" size="sm">Load sample project</Button>
+          <Button size="sm" onClick={onCreate}>Create new project</Button>
+          <Button variant="outline" size="sm" onClick={onLoadSample}>
+            Load sample project
+          </Button>
         </div>
       </div>
     </div>

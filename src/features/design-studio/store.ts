@@ -43,10 +43,13 @@ interface DesignStudioState {
 
   addLayer: (cardId: string, layer: Layer) => void;
   updateLayer: (cardId: string, layerId: string, updates: Partial<Layer>) => void;
+  updateLayerNoHistory: (cardId: string, layerId: string, updates: Partial<Layer>) => void;
+  duplicateLayer: (cardId: string, layerId: string) => void;
   deleteLayer: (cardId: string, layerId: string) => void;
   reorderLayers: (cardId: string, fromIdx: number, toIdx: number) => void;
   toggleLayerVisibility: (cardId: string, layerId: string) => void;
   toggleLayerLock: (cardId: string, layerId: string) => void;
+  commitTransaction: () => void;
 
   // ---------- HISTORY ----------
   history: DesignProject[];
@@ -78,7 +81,15 @@ const initialState = {
 export const useDesignStore = create<DesignStudioState>((set, get) => ({
   ...initialState,
 
-  setProject: (project) => set({ project, history: project ? [project] : [], historyIndex: project ? 0 : -1 }),
+  setProject: (project) =>
+    set({
+      project,
+      history: project ? [project] : [],
+      historyIndex: project ? 0 : -1,
+      // Auto-select first card on open so the Layers panel has something to show
+      selectedCardId: project?.cards[0]?.id ?? null,
+      selectedLayerId: null,
+    }),
   selectCard: (id) => set({ selectedCardId: id, selectedLayerId: null }),
   selectLayer: (cardId, layerId) => set({ selectedCardId: cardId, selectedLayerId: layerId }),
 
@@ -146,9 +157,9 @@ export const useDesignStore = create<DesignStudioState>((set, get) => ({
   },
 
   updateLayer: (cardId, layerId, updates) => {
-    const { project } = get();
+    const { project, pushHistory } = get();
     if (!project) return;
-    // Don't push history on every nudge — caller batches
+    pushHistory();
     set({
       project: {
         ...project,
@@ -160,6 +171,56 @@ export const useDesignStore = create<DesignStudioState>((set, get) => ({
         updatedAt: new Date().toISOString(),
       },
     });
+  },
+
+  // Called every frame during drag/resize — does NOT push history. Pair with
+  // commitTransaction() on pointer down to snapshot the starting state.
+  updateLayerNoHistory: (cardId, layerId, updates) => {
+    const { project } = get();
+    if (!project) return;
+    set({
+      project: {
+        ...project,
+        cards: project.cards.map((c) =>
+          c.id === cardId
+            ? { ...c, layers: c.layers.map((l) => (l.id === layerId ? ({ ...l, ...updates } as Layer) : l)) }
+            : c,
+        ),
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  },
+
+  duplicateLayer: (cardId, layerId) => {
+    const { project, pushHistory } = get();
+    if (!project) return;
+    const card = project.cards.find((c) => c.id === cardId);
+    const layer = card?.layers.find((l) => l.id === layerId);
+    if (!card || !layer) return;
+    pushHistory();
+    const dup: Layer = JSON.parse(JSON.stringify(layer));
+    // Offset positioned layers slightly so the copy is visible
+    if ('x' in dup && 'y' in dup) {
+      (dup as unknown as { x: number; y: number }).x += 40;
+      (dup as unknown as { x: number; y: number }).y += 40;
+    }
+    (dup as { id: string }).id = `layer-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    set({
+      project: {
+        ...project,
+        cards: project.cards.map((c) =>
+          c.id === cardId ? { ...c, layers: [...c.layers, dup] } : c,
+        ),
+        updatedAt: new Date().toISOString(),
+      },
+      selectedLayerId: (dup as { id: string }).id,
+    });
+  },
+
+  // Snapshot current state to history. Call on pointer-down before a drag.
+  commitTransaction: () => {
+    const { pushHistory } = get();
+    pushHistory();
   },
 
   deleteLayer: (cardId, layerId) => {

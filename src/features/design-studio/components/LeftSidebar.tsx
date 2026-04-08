@@ -1,6 +1,7 @@
 import { useDesignStore } from '../store';
 import { cn } from '@/lib/utils';
 import { Layers, Image, Palette, Type, Sparkles } from 'lucide-react';
+import { LayersPanel } from './LayersPanel';
 
 const TABS = [
   { id: 'layers' as const, label: 'Layers', icon: Layers },
@@ -60,9 +61,6 @@ function PanelStub({ title, description }: { title: string; description: string 
   );
 }
 
-function LayersPanel() {
-  return <PanelStub title="Layers" description="Layer stack for the selected card. Drag to reorder, click to select." />;
-}
 function AssetsPanel() {
   return <PanelStub title="Assets" description="Paste Nano Banana / Kling URLs or upload files to use in your designs." />;
 }
