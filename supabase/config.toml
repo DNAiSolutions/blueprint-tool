@@ -2,3 +2,22 @@ project_id = "uftrdyatdyorajnlbeun"
 
 [functions.generate-questions]
 verify_jwt = false
+
+# ---------- Design Studio — Phase 2 AI layer ----------
+[functions.generate-image]
+verify_jwt = true
+
+[functions.generate-video]
+verify_jwt = true
+
+[functions.remove-background]
+verify_jwt = true
+
+[functions.analyze-image]
+verify_jwt = true
+
+[functions.copilot-edit]
+verify_jwt = true
+
+[functions.quality-review]
+verify_jwt = true
