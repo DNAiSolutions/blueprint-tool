@@ -6,8 +6,11 @@ import { useState } from 'react';
 import { useDesignStore } from '../../store';
 import { createImageLayer, createVideoLayer } from '../../layer-factories';
 import { Button } from '@/components/ui/button';
-import { Upload, Link as LinkIcon, Film, Image as ImageIcon } from 'lucide-react';
+import {
+  Upload, Link as LinkIcon, Film, Image as ImageIcon, Sparkles, Wand2,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { GenerateModal, type GenerateMode } from '../GenerateModal';
 
 interface SessionAsset {
   id: string;
@@ -30,6 +33,7 @@ export function AssetsPanel() {
 
   const [url, setUrl] = useState('');
   const [assets, setAssets] = useState<SessionAsset[]>([]);
+  const [genMode, setGenMode] = useState<GenerateMode | null>(null);
 
   const activeCard =
     project?.cards.find((c) => c.id === selectedCardId) ?? project?.cards[0];
@@ -79,6 +83,34 @@ export function AssetsPanel() {
 
   return (
     <div className="space-y-3">
+      {/* AI Generation */}
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground flex items-center gap-1">
+          <Sparkles className="h-2.5 w-2.5 text-accent" /> Generate with AI
+        </label>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[11px] gap-1 justify-start"
+            onClick={() => setGenMode('background')}
+          >
+            <Wand2 className="h-3 w-3 text-accent" /> Background
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[11px] gap-1 justify-start"
+            onClick={() => setGenMode('image')}
+          >
+            <ImageIcon className="h-3 w-3 text-accent" /> Image
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+          FLUX Pro, Nano Banana, Ideogram via Fal.ai.
+        </p>
+      </div>
+
       {/* Paste URL */}
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
@@ -120,6 +152,12 @@ export function AssetsPanel() {
           onChange={handleFileInput}
         />
       </label>
+
+      <GenerateModal
+        open={genMode !== null}
+        onOpenChange={(open) => !open && setGenMode(null)}
+        mode={genMode ?? 'image'}
+      />
 
       {/* Session assets */}
       {assets.length > 0 && (

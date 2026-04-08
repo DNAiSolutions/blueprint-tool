@@ -6,7 +6,9 @@
 // Response: { image: { url: string } }
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, errorResponse, falRun, json } from "../_shared/ai.ts";
+import {
+  corsHeaders, errorResponse, falRun, json, safeUrlForLog,
+} from "../_shared/ai.ts";
 
 interface RemoveBgRequest {
   imageUrl: string;
@@ -25,7 +27,7 @@ serve(async (req) => {
     const body = (await req.json()) as RemoveBgRequest;
     if (!body.imageUrl) return errorResponse("imageUrl is required", 400);
 
-    console.log("[remove-background]", { imageUrl: body.imageUrl.slice(0, 120) });
+    console.log("[remove-background]", { imageUrl: safeUrlForLog(body.imageUrl) });
 
     const result = await falRun<FalBgResult>("fal-ai/bria/background/remove", {
       image_url: body.imageUrl,

@@ -13,6 +13,7 @@ import {
   errorResponse,
   json,
   parseJsonFromClaude,
+  safeUrlForLog,
 } from "../_shared/ai.ts";
 
 interface AnalyzeRequest {
@@ -52,7 +53,7 @@ serve(async (req) => {
     const body = (await req.json()) as AnalyzeRequest;
     if (!body.imageUrl) return errorResponse("imageUrl is required", 400);
 
-    console.log("[analyze-image]", { imageUrl: body.imageUrl.slice(0, 120) });
+    console.log("[analyze-image]", { imageUrl: safeUrlForLog(body.imageUrl) });
 
     const raw = await claudeComplete(
       [

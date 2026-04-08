@@ -24,6 +24,19 @@ export function errorResponse(message: string, status = 500): Response {
   return json({ error: message }, status);
 }
 
+/**
+ * Strip query strings (which may hold signed Supabase Storage tokens)
+ * so we can log URLs without leaking credentials.
+ */
+export function safeUrlForLog(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return "[unparseable-url]";
+  }
+}
+
 // ---------- Fal.ai ----------
 // Fal.ai uses a queue-based API. We submit a job, then poll until done.
 // Docs: https://fal.ai/docs/reference/rest

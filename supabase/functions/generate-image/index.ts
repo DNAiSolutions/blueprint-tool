@@ -57,6 +57,19 @@ function aspectToSize(aspect: Aspect): { width: number; height: number } {
   }
 }
 
+// FLUX Pro / Dev accepts named `image_size` enums — safer than a custom
+// object. `4:5` has no exact enum so we fall back to `portrait_4_3` which
+// is the closest shape.
+function aspectToFluxSize(aspect: Aspect): string {
+  switch (aspect) {
+    case "9:16": return "portrait_16_9";
+    case "4:5": return "portrait_4_3";
+    case "16:9": return "landscape_16_9";
+    case "1:1":
+    default: return "square_hd";
+  }
+}
+
 function modelToFalPath(model: Model, hasRef: boolean): string {
   switch (model) {
     case "nano-banana":
@@ -100,21 +113,27 @@ function buildFalInput(
   }
 
   if (model === "ideogram") {
+    // Ideogram v2 expects lowercase ratios like "1:1", "9:16", "16:9".
+    // `4:5` isn't in the v2 enum — fall back to "3:4" which is the closest.
     base.aspect_ratio =
-      aspect === "1:1" ? "ASPECT_1_1"
-      : aspect === "9:16" ? "ASPECT_9_16"
-      : aspect === "4:5" ? "ASPECT_4_5"
-      : "ASPECT_16_9";
-    base.style = "GENERAL";
+      aspect === "1:1" ? "1:1"
+      : aspect === "9:16" ? "9:16"
+      : aspect === "4:5" ? "3:4"
+      : "16:9";
+    base.style = "general";
     return base;
   }
 
-  // FLUX
-  base.image_size = { width, height };
+  // FLUX — image_size is an enum string, not an object.
+  base.image_size = aspectToFluxSize(aspect);
   if (imageUrl) {
     base.image_url = imageUrl;
     base.strength = 0.8;
   }
+  // Width/height are unused by FLUX enum mode but surface the requested
+  // logical size so the client has a fallback when the response omits them.
+  void width;
+  void height;
   return base;
 }
 

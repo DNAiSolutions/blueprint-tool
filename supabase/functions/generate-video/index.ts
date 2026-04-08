@@ -39,21 +39,20 @@ serve(async (req) => {
 
     const duration = body.duration ?? 5;
     const prompt = body.prompt ?? "Subtle cinematic motion, gentle camera drift, soft parallax";
-    const aspectRatio = body.aspect === "9:16" ? "9:16"
-      : body.aspect === "4:5" ? "4:5"
-      : body.aspect === "16:9" ? "16:9"
-      : "1:1";
 
     console.log("[generate-video]", { duration, prompt: prompt.slice(0, 80) });
 
-    // Fal's Kling v1.6 / v2 standard image-to-video endpoint.
+    // Kling v1.6 standard image-to-video. Note: `aspect_ratio` is NOT a
+    // supported input — the output ratio is derived from the source image.
+    // We still accept `body.aspect` so the client can round-trip it, but
+    // it's not forwarded to Fal.
+    void body.aspect;
     const result = await falRun<FalVideoResult>(
       "fal-ai/kling-video/v1.6/standard/image-to-video",
       {
         image_url: body.imageUrl,
         prompt,
         duration: String(duration),
-        aspect_ratio: aspectRatio,
       },
       { timeoutMs: 300_000, pollMs: 3000 },
     );
