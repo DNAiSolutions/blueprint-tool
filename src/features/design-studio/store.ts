@@ -4,6 +4,17 @@
 import { create } from 'zustand';
 import type { DesignProject, Card, Layer, BrandKit } from './types';
 
+// ---------- AI Copilot patch shape ----------
+// Mirrors the Copilot edge function response (src/features/design-studio/lib/ai-client.ts).
+// Kept here so the store has no UI-layer dependency.
+export type CopilotPatchOp = 'update' | 'add' | 'delete';
+export interface CopilotPatch {
+  op: CopilotPatchOp;
+  layerId?: string;
+  layer?: Layer;
+  updates?: Partial<Layer>;
+}
+
 const MAX_HISTORY = 50;
 
 interface DesignStudioState {
@@ -57,6 +68,11 @@ interface DesignStudioState {
   toggleLayerVisibility: (cardId: string, layerId: string) => void;
   toggleLayerLock: (cardId: string, layerId: string) => void;
   commitTransaction: () => void;
+  /**
+   * Apply a batch of Copilot patches to a card atomically — single history
+   * snapshot covers the whole batch so one "Ask Copilot" = one undo step.
+   */
+  applyCopilotPatches: (cardId: string, patches: CopilotPatch[]) => void;
 
   // ---------- HISTORY ----------
   history: DesignProject[];
@@ -244,6 +260,39 @@ export const useDesignStore = create<DesignStudioState>((set, get) => ({
   commitTransaction: () => {
     const { pushHistory } = get();
     pushHistory();
+  },
+
+  applyCopilotPatches: (cardId, patches) => {
+    const { project, pushHistory } = get();
+    if (!project || patches.length === 0) return;
+    pushHistory();
+
+    // Build the next card in a single pass so every patch sees the running
+    // state and we push exactly one history entry for the whole batch.
+    const nextCards = project.cards.map((c) => {
+      if (c.id !== cardId) return c;
+      let layers = [...c.layers];
+
+      for (const patch of patches) {
+        if (patch.op === 'update' && patch.layerId && patch.updates) {
+          layers = layers.map((l) =>
+            l.id === patch.layerId ? ({ ...l, ...patch.updates } as Layer) : l,
+          );
+        } else if (patch.op === 'add' && patch.layer) {
+          // Guard against duplicate IDs coming back from Claude
+          const exists = layers.some((l) => l.id === patch.layer!.id);
+          if (!exists) layers.push(patch.layer);
+        } else if (patch.op === 'delete' && patch.layerId) {
+          layers = layers.filter((l) => l.id !== patch.layerId);
+        }
+      }
+
+      return { ...c, layers };
+    });
+
+    set({
+      project: { ...project, cards: nextCards, updatedAt: new Date().toISOString() },
+    });
   },
 
   deleteLayer: (cardId, layerId) => {

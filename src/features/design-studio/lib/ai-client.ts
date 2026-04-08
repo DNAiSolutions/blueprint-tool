@@ -5,7 +5,11 @@
 // All methods throw on failure so callers can surface errors via toast.
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Card, Layer } from '../types';
+import type { Card } from '../types';
+import type { CopilotPatch } from '../store';
+
+// Re-export so feature code can import CopilotPatch from either place
+export type { CopilotPatch } from '../store';
 
 // ---------- Shared types ----------
 export type Aspect = '1:1' | '9:16' | '4:5' | '16:9';
@@ -29,15 +33,6 @@ export interface ImageAnalysis {
   layout: string;
   fonts: string;
   notes: string;
-}
-
-export type CopilotOp = 'update' | 'add' | 'delete';
-
-export interface CopilotPatch {
-  op: CopilotOp;
-  layerId?: string;
-  layer?: Layer;
-  updates?: Partial<Layer>;
 }
 
 export interface CopilotResult {
