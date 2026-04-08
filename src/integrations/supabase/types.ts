@@ -841,6 +841,145 @@ export type Database = {
           },
         ]
       }
+      design_brand_kits: {
+        Row: {
+          id: string
+          client_id: string | null
+          user_id: string | null
+          name: string
+          colors: Json
+          fonts: Json
+          logos: Json | null
+          is_default: boolean | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client_id?: string | null
+          user_id?: string | null
+          name: string
+          colors?: Json
+          fonts?: Json
+          logos?: Json | null
+          is_default?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string | null
+          user_id?: string | null
+          name?: string
+          colors?: Json
+          fonts?: Json
+          logos?: Json | null
+          is_default?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "design_brand_kits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      design_projects: {
+        Row: {
+          id: string
+          project_id: string | null
+          user_id: string | null
+          brand_kit_id: string | null
+          name: string
+          layout: string
+          cards: Json
+          thumbnail_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id?: string | null
+          user_id?: string | null
+          brand_kit_id?: string | null
+          name: string
+          layout?: string
+          cards?: Json
+          thumbnail_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string | null
+          user_id?: string | null
+          brand_kit_id?: string | null
+          name?: string
+          layout?: string
+          cards?: Json
+          thumbnail_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "design_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "design_projects_brand_kit_id_fkey"
+            columns: ["brand_kit_id"]
+            isOneToOne: false
+            referencedRelation: "design_brand_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      design_assets: {
+        Row: {
+          id: string
+          design_project_id: string | null
+          user_id: string | null
+          type: string
+          url: string
+          source: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          design_project_id?: string | null
+          user_id?: string | null
+          type: string
+          url: string
+          source?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          design_project_id?: string | null
+          user_id?: string | null
+          type?: string
+          url?: string
+          source?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "design_assets_design_project_id_fkey"
+            columns: ["design_project_id"]
+            isOneToOne: false
+            referencedRelation: "design_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { useClientContext } from '@/hooks/useClientContext';
 import { useContentApproval } from '@/hooks/useContentApproval';
 import { AddScriptDialog } from '@/components/forms/AddScriptDialog';
+import { DesignStudio } from '@/features/design-studio/DesignStudio';
 import { cn } from '@/lib/utils';
 import {
   Plus, ChevronLeft, ChevronRight, Filter, Play, Copy, Image,
   Eye, CheckCircle, FileText, CheckCircle2, RotateCcw, Clock,
+  Palette, Film, Cpu,
 } from 'lucide-react';
 
 const mockScripts = [
@@ -57,8 +59,11 @@ function getAutoApproveCountdown(autoApproveAt: string | null): string | null {
   return `${diffDays}d`;
 }
 
+type ProductionSubTab = 'jobs' | 'design-studio' | 'video-studio';
+
 export default function Content() {
   const [subTab, setSubTab] = useState('calendar');
+  const [productionSubTab, setProductionSubTab] = useState<ProductionSubTab>('jobs');
   const [showAddScript, setShowAddScript] = useState(false);
   const tabs = ['calendar', 'scripts', 'production', 'review', 'published', 'templates'];
   const { selectedClient, internalClient } = useClientContext();
@@ -91,6 +96,74 @@ export default function Content() {
         ))}
       </div>
 
+      {/* Production tab renders outside the padded wrapper so Design Studio can own its full layout */}
+      {subTab === 'production' ? (
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* Nested sub-tab bar */}
+          <div className="flex border-b border-border px-6 shrink-0 bg-card/30">
+            {([
+              { id: 'jobs', label: 'Jobs', icon: Cpu },
+              { id: 'design-studio', label: 'Design Studio', icon: Palette },
+              { id: 'video-studio', label: 'Video Studio', icon: Film },
+            ] as const).map((t) => {
+              const Icon = t.icon;
+              const active = productionSubTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setProductionSubTab(t.id)}
+                  className={cn(
+                    'px-4 py-2 text-[12px] font-medium border-b-2 transition-colors flex items-center gap-1.5',
+                    active ? 'border-accent text-accent' : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Jobs — existing production queue */}
+          {productionSubTab === 'jobs' && (
+            <div className="flex-1 overflow-auto p-6 scrollbar-thin">
+              <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <div className="grid grid-cols-[80px_2fr_1fr_1fr_1fr_80px] px-4 py-2.5 border-b border-border text-[11px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span>Status</span><span>Script</span><span>Client</span><span>Type</span><span>Provider</span><span>ETA</span>
+                </div>
+                {filteredJobs.map((j, i) => (
+                  <div key={i} className={cn('grid grid-cols-[80px_2fr_1fr_1fr_1fr_80px] px-4 py-3 items-center text-[13px]', i % 2 === 0 ? 'bg-card' : 'bg-background')}>
+                    <StatusBadge status={j.status} />
+                    <span>{j.title}</span>
+                    <span className="text-muted-foreground">{j.client}</span>
+                    <span className="text-muted-foreground">{j.type}</span>
+                    <span className="text-muted-foreground">{j.provider}</span>
+                    <span className={cn('text-xs', j.eta === 'Failed' ? 'text-destructive' : 'text-muted-foreground')}>{j.eta}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Design Studio — 3-panel AI design canvas */}
+          {productionSubTab === 'design-studio' && (
+            <div className="flex-1 min-h-0">
+              <DesignStudio projectId={selectedClient?.id} />
+            </div>
+          )}
+
+          {/* Video Studio — placeholder for Phase 2 */}
+          {productionSubTab === 'video-studio' && (
+            <div className="flex-1 overflow-auto p-6 scrollbar-thin">
+              <EmptyState
+                icon={Film}
+                title="Video Studio — coming soon"
+                description="AI-powered video editing, transitions, captions, and motion graphics. Will integrate HeyGen, Remotion, and Kling timelines."
+              />
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="flex-1 overflow-auto p-6 scrollbar-thin">
         {/* Calendar */}
         {subTab === 'calendar' && (
@@ -145,25 +218,6 @@ export default function Content() {
                 <span className="text-muted-foreground">{s.platform}</span>
                 <StatusBadge status={s.status} />
                 <span className="text-xs text-muted-foreground">{s.scheduledAt || '—'}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Production */}
-        {subTab === 'production' && (
-          <div className="rounded-lg border border-border bg-card overflow-hidden">
-            <div className="grid grid-cols-[80px_2fr_1fr_1fr_1fr_80px] px-4 py-2.5 border-b border-border text-[11px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
-              <span>Status</span><span>Script</span><span>Client</span><span>Type</span><span>Provider</span><span>ETA</span>
-            </div>
-            {filteredJobs.map((j, i) => (
-              <div key={i} className={cn('grid grid-cols-[80px_2fr_1fr_1fr_1fr_80px] px-4 py-3 items-center text-[13px]', i % 2 === 0 ? 'bg-card' : 'bg-background')}>
-                <StatusBadge status={j.status} />
-                <span>{j.title}</span>
-                <span className="text-muted-foreground">{j.client}</span>
-                <span className="text-muted-foreground">{j.type}</span>
-                <span className="text-muted-foreground">{j.provider}</span>
-                <span className={cn('text-xs', j.eta === 'Failed' ? 'text-destructive' : 'text-muted-foreground')}>{j.eta}</span>
               </div>
             ))}
           </div>
@@ -254,6 +308,7 @@ export default function Content() {
           />
         )}
       </div>
+      )}
 
       <AddScriptDialog open={showAddScript} onOpenChange={setShowAddScript} />
     </AppLayout>
