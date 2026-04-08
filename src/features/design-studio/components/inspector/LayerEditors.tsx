@@ -3,6 +3,7 @@
 // are pushed through updateLayerNoHistory + commitTransaction at mount so
 // typing doesn't explode the history stack.
 
+import { useState } from 'react';
 import { useDesignStore } from '../../store';
 import type {
   Layer, SolidLayer, GradientLayer, LiquidGlassLayer, ImageLayer,
@@ -14,7 +15,13 @@ import {
   SelectInput, TextInput, ToggleButtonGroup,
 } from './InspectorPrimitives';
 import { GOOGLE_FONTS, ensureFontLoaded } from '../../google-fonts';
-import { AlignLeft, AlignCenter, AlignRight, Italic, FlipHorizontal, FlipVertical } from 'lucide-react';
+import {
+  AlignLeft, AlignCenter, AlignRight, Italic, FlipHorizontal, FlipVertical,
+  Scissors, Film, Loader2, Sparkles,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { removeBackground, generateVideo } from '../../lib/ai-client';
 
 interface EditorProps<T extends Layer> {
   cardId: string;
@@ -98,9 +105,105 @@ function LiquidGlassEditor({ cardId, layer }: EditorProps<LiquidGlassLayer>) {
 // ---------- Image ----------
 function ImageEditor({ cardId, layer }: EditorProps<ImageLayer>) {
   const updateLayer = useDesignStore((s) => s.updateLayer);
+  const replaceLayer = useDesignStore((s) => s.replaceLayer);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  const handleRemoveBackground = async () => {
+    setIsRemovingBg(true);
+    try {
+      const { image } = await removeBackground(layer.url);
+      updateLayer(cardId, layer.id, { url: image.url });
+      toast.success('Background removed');
+    } catch (err) {
+      toast.error('Background removal failed', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
+    } finally {
+      setIsRemovingBg(false);
+    }
+  };
+
+  const handleAnimate = async () => {
+    setIsAnimating(true);
+    try {
+      toast.message('Kling 3.0 is animating…', {
+        description: 'This takes 1–3 minutes. You can keep working.',
+      });
+      const { video } = await generateVideo({
+        imageUrl: layer.url,
+        duration: 5,
+      });
+      // Transform this image layer into a video layer at the same position
+      const videoLayer: VideoLayer = {
+        id: `vid-${Date.now()}`,
+        type: 'video',
+        url: video.url,
+        x: layer.x,
+        y: layer.y,
+        w: layer.w,
+        h: layer.h,
+        loop: true,
+        muted: true,
+        opacity: layer.opacity,
+        playbackRate: 1,
+        visible: layer.visible,
+        locked: layer.locked,
+      };
+      replaceLayer(cardId, layer.id, videoLayer);
+      toast.success('Image animated', { description: 'Layer is now a video.' });
+    } catch (err) {
+      toast.error('Animate failed', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
+    } finally {
+      setIsAnimating(false);
+    }
+  };
+
   return (
     <>
       <SectionTitle>Image</SectionTitle>
+
+      {/* AI Actions */}
+      <div className="space-y-1.5 mb-2">
+        <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground flex items-center gap-1">
+          <Sparkles className="h-2.5 w-2.5 text-accent" /> AI actions
+        </label>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[10px] gap-1 justify-start"
+            onClick={handleRemoveBackground}
+            disabled={isRemovingBg || isAnimating}
+            title="Cut out the subject — BRIA RMBG via Fal.ai"
+          >
+            {isRemovingBg ? (
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+            ) : (
+              <Scissors className="h-2.5 w-2.5 text-accent" />
+            )}
+            Remove BG
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[10px] gap-1 justify-start"
+            onClick={handleAnimate}
+            disabled={isAnimating || isRemovingBg}
+            title="Animate into a 5s clip — Kling 3.0 via Fal.ai"
+          >
+            {isAnimating ? (
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+            ) : (
+              <Film className="h-2.5 w-2.5 text-accent" />
+            )}
+            Animate
+          </Button>
+        </div>
+      </div>
+
       <Field label="URL">
         <TextInput
           value={layer.url}

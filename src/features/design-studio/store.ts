@@ -262,6 +262,30 @@ export const useDesignStore = create<DesignStudioState>((set, get) => ({
     pushHistory();
   },
 
+  // Swap a layer with a completely different layer (e.g. Image → Video
+  // after Kling animation). Preserves position in the stack and pushes a
+  // single history entry.
+  replaceLayer: (cardId, layerId, replacement) => {
+    const { project, pushHistory } = get();
+    if (!project) return;
+    pushHistory();
+    set({
+      project: {
+        ...project,
+        cards: project.cards.map((c) =>
+          c.id === cardId
+            ? {
+                ...c,
+                layers: c.layers.map((l) => (l.id === layerId ? replacement : l)),
+              }
+            : c,
+        ),
+        updatedAt: new Date().toISOString(),
+      },
+      selectedLayerId: replacement.id,
+    });
+  },
+
   applyCopilotPatches: (cardId, patches) => {
     const { project, pushHistory } = get();
     if (!project || patches.length === 0) return;
