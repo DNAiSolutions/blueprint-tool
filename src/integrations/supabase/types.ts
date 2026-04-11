@@ -110,6 +110,84 @@ export type Database = {
         }
         Relationships: []
       }
+      design_brand_kits: {
+        Row: {
+          client_id: string | null
+          colors: Json | null
+          created_at: string
+          fonts: Json | null
+          id: string
+          is_default: boolean | null
+          logos: Json | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          colors?: Json | null
+          created_at?: string
+          fonts?: Json | null
+          id?: string
+          is_default?: boolean | null
+          logos?: Json | null
+          name: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          client_id?: string | null
+          colors?: Json | null
+          created_at?: string
+          fonts?: Json | null
+          id?: string
+          is_default?: boolean | null
+          logos?: Json | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      design_projects: {
+        Row: {
+          brand_kit_id: string | null
+          cards: Json | null
+          created_at: string
+          id: string
+          layout: string | null
+          name: string
+          project_id: string | null
+          thumbnail_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_kit_id?: string | null
+          cards?: Json | null
+          created_at?: string
+          id?: string
+          layout?: string | null
+          name: string
+          project_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          brand_kit_id?: string | null
+          cards?: Json | null
+          created_at?: string
+          id?: string
+          layout?: string | null
+          name?: string
+          project_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           api_key_encrypted: string | null
@@ -252,6 +330,56 @@ export type Database = {
           },
         ]
       }
+      pipeline_opportunities: {
+        Row: {
+          assigned_agent: string | null
+          client_id: string | null
+          created_at: string
+          deal_value: number | null
+          entered_stage_at: string
+          id: string
+          notes: string | null
+          pipeline: string
+          stage: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_agent?: string | null
+          client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          entered_stage_at?: string
+          id?: string
+          notes?: string | null
+          pipeline: string
+          stage: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          assigned_agent?: string | null
+          client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          entered_stage_at?: string
+          id?: string
+          notes?: string | null
+          pipeline?: string
+          stage?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_opportunities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_jobs: {
         Row: {
           completed_at: string | null
@@ -321,6 +449,80 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      project_services: {
+        Row: {
+          activated_at: string
+          cancelled_at: string | null
+          config: Json | null
+          id: string
+          project_id: string
+          service_type: string
+          status: string
+        }
+        Insert: {
+          activated_at?: string
+          cancelled_at?: string | null
+          config?: Json | null
+          id?: string
+          project_id: string
+          service_type: string
+          status?: string
+        }
+        Update: {
+          activated_at?: string
+          cancelled_at?: string | null
+          config?: Json | null
+          id?: string
+          project_id?: string
+          service_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_services_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          client_id: string
+          created_at: string
+          ghl_location_id: string | null
+          ghl_subaccount_id: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          ghl_location_id?: string | null
+          ghl_subaccount_id?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          ghl_location_id?: string | null
+          ghl_subaccount_id?: string | null
+          id?: string
+          name?: string
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -399,6 +601,75 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          agent_task_id: string | null
+          assigned_agent: string | null
+          category: string
+          client_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          priority: string
+          project_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_task_id?: string | null
+          assigned_agent?: string | null
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          priority?: string
+          project_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          agent_task_id?: string | null
+          assigned_agent?: string | null
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          priority?: string
+          project_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
