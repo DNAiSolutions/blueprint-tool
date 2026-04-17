@@ -39,7 +39,8 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const key = status.toLowerCase().replace(/[\s-]/g, '_');
+  const safeStatus = status ?? 'draft';
+  const key = String(safeStatus).toLowerCase().replace(/[\s-]/g, '_');
   const style = variants[key] || variants.draft;
   return (
     <span className={cn(
@@ -47,7 +48,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       style,
       className
     )}>
-      {status}
+      {safeStatus}
     </span>
   );
 }

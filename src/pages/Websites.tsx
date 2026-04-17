@@ -108,7 +108,7 @@ export default function Websites() {
     : MOCK_TEMPLATES.map(t => ({ name: t, id: t }));
 
   const filteredSites = useMemo(() => {
-    return displaySites.filter((site) => {
+    return (displaySites as any[]).filter((site: any) => {
       const source = site.source_type ?? 'client_project';
       const stage = site.website_stage ?? site.status;
       const normalizedStage = site.status === 'live' ? 'deployed' : stage;

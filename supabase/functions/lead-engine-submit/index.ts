@@ -79,16 +79,18 @@ Deno.serve(async (req: Request) => {
 
     if (!leadError && lead?.id) {
       await supabase.from('lead_engine_submissions').update({ linked_lead_id: lead.id }).eq('id', submission.id);
-      await supabase.from('pipeline_opportunities').insert({
-        pipeline: 'new_leads',
-        stage: 'new_lead',
-        deal_value: 0,
-        notes: body.businessName ?? 'Lead engine submission',
-        source_ref_id: submission.id,
-        assigned_agent: 'website-builder',
-      } as any).throwOnError().catch(() => {
+      try {
+        await supabase.from('pipeline_opportunities').insert({
+          pipeline: 'new_leads',
+          stage: 'new_lead',
+          deal_value: 0,
+          notes: body.businessName ?? 'Lead engine submission',
+          source_ref_id: submission.id,
+          assigned_agent: 'website-builder',
+        } as any);
+      } catch {
         // Fail soft until every environment has the exact pipeline schema.
-      });
+      }
     }
 
     const { error: runError } = await supabase.from('lead_engine_runs').insert({

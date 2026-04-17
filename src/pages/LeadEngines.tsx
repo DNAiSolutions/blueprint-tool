@@ -122,7 +122,7 @@ export default function LeadEngines() {
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {services.length > 0 ? services.slice(0, 2).map((service) => (
-                    <StatusBadge key={service} status={String(service)} />
+                    <StatusBadge key={String(service)} status={String(service)} />
                   )) : <span className="text-xs text-muted-foreground">No services</span>}
                 </div>
                 <StatusBadge status={websiteStatus} />
