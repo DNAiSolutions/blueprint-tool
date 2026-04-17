@@ -15,6 +15,8 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Content from "./pages/Content";
 import Websites from "./pages/Websites";
+import LeadEngines from "./pages/LeadEngines";
+import LeadEngineDetail from "./pages/LeadEngineDetail";
 import Leads from "./pages/Leads";
 import AICommand from "./pages/AICommand";
 import Finances from "./pages/Finances";
@@ -62,6 +64,8 @@ const App = () => (
               <Route path="/projects/:id" element={<ProtectedRoute requireStaff><ProjectDetail /></ProtectedRoute>} />
               <Route path="/content" element={<ProtectedRoute requireStaff><Content /></ProtectedRoute>} />
               <Route path="/websites" element={<ProtectedRoute requireStaff><Websites /></ProtectedRoute>} />
+              <Route path="/lead-engines" element={<ProtectedRoute requireStaff><LeadEngines /></ProtectedRoute>} />
+              <Route path="/lead-engines/:id" element={<ProtectedRoute requireStaff><LeadEngineDetail /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute requireStaff><Leads /></ProtectedRoute>} />
               <Route path="/ai" element={<ProtectedRoute requireStaff><AICommand /></ProtectedRoute>} />
 
