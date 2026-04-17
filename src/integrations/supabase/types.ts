@@ -330,187 +330,6 @@ export type Database = {
           },
         ]
       }
-      lead_engine_onboarding: {
-        Row: {
-          confirmed_services: Json | null
-          created_at: string
-          id: string
-          intake_changes_summary: string | null
-          lead_engine_submission_id: string
-          missing_items_summary: string | null
-          next_follow_up_at: string | null
-          next_owner: string | null
-          ready_for_fulfillment: boolean | null
-          status: string
-          updated_at: string
-          website_review_status: string | null
-        }
-        Insert: {
-          confirmed_services?: Json | null
-          created_at?: string
-          id?: string
-          intake_changes_summary?: string | null
-          lead_engine_submission_id: string
-          missing_items_summary?: string | null
-          next_follow_up_at?: string | null
-          next_owner?: string | null
-          ready_for_fulfillment?: boolean | null
-          status?: string
-          updated_at?: string
-          website_review_status?: string | null
-        }
-        Update: {
-          confirmed_services?: Json | null
-          created_at?: string
-          id?: string
-          intake_changes_summary?: string | null
-          lead_engine_submission_id?: string
-          missing_items_summary?: string | null
-          next_follow_up_at?: string | null
-          next_owner?: string | null
-          ready_for_fulfillment?: boolean | null
-          status?: string
-          updated_at?: string
-          website_review_status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_engine_onboarding_submission_id_fkey"
-            columns: ["lead_engine_submission_id"]
-            isOneToOne: false
-            referencedRelation: "lead_engine_submissions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_engine_runs: {
-        Row: {
-          content_status: string
-          created_at: string
-          crm_sync_status: string
-          id: string
-          last_error: string | null
-          lead_engine_submission_id: string
-          preview_url: string | null
-          research_status: string
-          updated_at: string
-          video_status: string
-          website_status: string
-        }
-        Insert: {
-          content_status?: string
-          created_at?: string
-          crm_sync_status?: string
-          id?: string
-          last_error?: string | null
-          lead_engine_submission_id: string
-          preview_url?: string | null
-          research_status?: string
-          updated_at?: string
-          video_status?: string
-          website_status?: string
-        }
-        Update: {
-          content_status?: string
-          created_at?: string
-          crm_sync_status?: string
-          id?: string
-          last_error?: string | null
-          lead_engine_submission_id?: string
-          preview_url?: string | null
-          research_status?: string
-          updated_at?: string
-          video_status?: string
-          website_status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_engine_runs_submission_id_fkey"
-            columns: ["lead_engine_submission_id"]
-            isOneToOne: false
-            referencedRelation: "lead_engine_submissions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_engine_submissions: {
-        Row: {
-          business_name: string | null
-          contact_name: string | null
-          created_at: string
-          email: string | null
-          id: string
-          industry: string | null
-          intake_payload: Json | null
-          lead_engine_type: string
-          linked_client_id: string | null
-          linked_lead_id: string | null
-          niche: string | null
-          phone: string | null
-          selected_services: Json | null
-          source_funnel: string | null
-          status: string
-          updated_at: string
-          user_id: string
-          website_url: string | null
-        }
-        Insert: {
-          business_name?: string | null
-          contact_name?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          industry?: string | null
-          intake_payload?: Json | null
-          lead_engine_type?: string
-          linked_client_id?: string | null
-          linked_lead_id?: string | null
-          niche?: string | null
-          phone?: string | null
-          selected_services?: Json | null
-          source_funnel?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-          website_url?: string | null
-        }
-        Update: {
-          business_name?: string | null
-          contact_name?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          industry?: string | null
-          intake_payload?: Json | null
-          lead_engine_type?: string
-          linked_client_id?: string | null
-          linked_lead_id?: string | null
-          niche?: string | null
-          phone?: string | null
-          selected_services?: Json | null
-          source_funnel?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-          website_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_engine_submissions_linked_client_id_fkey"
-            columns: ["linked_client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_engine_submissions_linked_lead_id_fkey"
-            columns: ["linked_lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       pipeline_opportunities: {
         Row: {
           assigned_agent: string | null
@@ -977,17 +796,10 @@ export type Database = {
           domain: string | null
           id: string
           last_deployed: string | null
-          preview_url: string | null
-          promotion_status: string
           site_code: string | null
-          source_funnel: string | null
-          source_submission_id: string | null
-          source_type: string
-          stitch_project_id: string | null
           stitch_design_md: string | null
           template: string | null
           user_id: string
-          website_stage: string
         }
         Insert: {
           client_id?: string | null
@@ -998,17 +810,10 @@ export type Database = {
           domain?: string | null
           id?: string
           last_deployed?: string | null
-          preview_url?: string | null
-          promotion_status?: string
           site_code?: string | null
-          source_funnel?: string | null
-          source_submission_id?: string | null
-          source_type?: string
-          stitch_project_id?: string | null
           stitch_design_md?: string | null
           template?: string | null
           user_id: string
-          website_stage?: string
         }
         Update: {
           client_id?: string | null
@@ -1019,17 +824,10 @@ export type Database = {
           domain?: string | null
           id?: string
           last_deployed?: string | null
-          preview_url?: string | null
-          promotion_status?: string
           site_code?: string | null
-          source_funnel?: string | null
-          source_submission_id?: string | null
-          source_type?: string
-          stitch_project_id?: string | null
           stitch_design_md?: string | null
           template?: string | null
           user_id?: string
-          website_stage?: string
         }
         Relationships: [
           {
@@ -1037,13 +835,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "websites_source_submission_id_fkey"
-            columns: ["source_submission_id"]
-            isOneToOne: false
-            referencedRelation: "lead_engine_submissions"
             referencedColumns: ["id"]
           },
         ]
