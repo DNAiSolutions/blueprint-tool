@@ -67,6 +67,7 @@ interface DesignStudioState {
   reorderLayers: (cardId: string, fromIdx: number, toIdx: number) => void;
   toggleLayerVisibility: (cardId: string, layerId: string) => void;
   toggleLayerLock: (cardId: string, layerId: string) => void;
+  replaceLayer: (cardId: string, layerId: string, replacement: Layer) => void;
   commitTransaction: () => void;
   /**
    * Apply a batch of Copilot patches to a card atomically — single history

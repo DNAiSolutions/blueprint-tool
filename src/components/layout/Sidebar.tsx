@@ -55,10 +55,6 @@ const adminNav: NavItem[] = [
       { id: 'settings-users', label: 'Users', href: '/settings/users' },
       { id: 'settings-automations', label: 'Automations', href: '/settings/automations' },
       { id: 'settings-canvas', label: 'Canvas', href: '/settings/canvas' },
-      { id: 'settings-health', label: 'Client Health', href: '/clients/health' },
-      { id: 'settings-costs', label: 'Cost Ledger', href: '/clients/costs' },
-      { id: 'settings-templates', label: 'Templates', href: '/clients/templates' },
-      { id: 'settings-webhooks', label: 'Webhooks', href: '/clients/webhooks' },
     ],
   },
 ];
