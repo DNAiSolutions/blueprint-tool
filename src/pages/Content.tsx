@@ -7,6 +7,7 @@ import { useClientContext } from '@/hooks/useClientContext';
 import { useContentApproval } from '@/hooks/useContentApproval';
 import { AddScriptDialog } from '@/components/forms/AddScriptDialog';
 import { DesignStudio } from '@/features/design-studio/DesignStudio';
+import { VideoStudio } from '@/features/video-studio/VideoStudio';
 import { cn } from '@/lib/utils';
 import {
   Plus, ChevronLeft, ChevronRight, Filter, Play, Copy, Image,
@@ -152,14 +153,10 @@ export default function Content() {
             </div>
           )}
 
-          {/* Video Studio — placeholder for Phase 2 */}
+          {/* Video Studio — DigitalDNA 3-stage video editing pipeline */}
           {productionSubTab === 'video-studio' && (
-            <div className="flex-1 overflow-auto p-6 scrollbar-thin">
-              <EmptyState
-                icon={Film}
-                title="Video Studio — coming soon"
-                description="AI-powered video editing, transitions, captions, and motion graphics. Will integrate HeyGen, Remotion, and Kling timelines."
-              />
+            <div className="flex-1 min-h-0">
+              <VideoStudio projectId={selectedClient?.id} />
             </div>
           )}
         </div>
