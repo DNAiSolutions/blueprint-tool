@@ -21,3 +21,9 @@ verify_jwt = true
 
 [functions.quality-review]
 verify_jwt = true
+# Command Center — live agent status. Receives POSTs from agent hooks
+# (Claude Code SessionStart/PreToolUse/PostToolUse/Stop) and serves the
+# current status to the AICommand dashboard. Open endpoint so hooks from
+# any environment can report without holding a Supabase JWT.
+[functions.agent-status]
+verify_jwt = false
