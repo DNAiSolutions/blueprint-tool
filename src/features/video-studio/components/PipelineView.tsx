@@ -205,15 +205,20 @@ function CenterPanel({ project, onChange }: { project: VideoProject; onChange: (
   const overall = progressOverall(project.stages);
 
   const handleRunPipeline = () => {
-    // In prod: kick off server-side pipeline. For demo, advance stages.
-    const next = { ...project, status: 'processing' as const, updatedAt: new Date().toISOString() };
-    next.stages = next.stages.map((s, i) =>
-      i === 0 ? { ...s, status: 'running' as const, progress: 0 } : s
-    );
+    // Flip status to 'ready' so the Bun worker (scripts/worker.ts) picks it up.
+    // If the worker isn't running, the row just sits in 'ready' until someone
+    // starts it. The UI shows "processing" as soon as the worker begins writing
+    // back progress (realtime subscription auto-refreshes).
+    const next = {
+      ...project,
+      status: 'ready' as const,
+      updatedAt: new Date().toISOString(),
+      stages: project.stages.map((s) => ({ ...s, status: 'pending' as const, progress: 0 })),
+    };
     onChange(next);
   };
 
-  const canRun = project.sources.length > 0 && project.status === 'draft';
+  const canRun = project.sources.length > 0 && (project.status === 'draft' || project.status === 'needs_fixes');
   const canRender = project.status === 'approved';
 
   return (
