@@ -9,6 +9,7 @@ import {
   Grid3x3,
   Package,
   Terminal,
+  TerminalSquare,
   KanbanSquare,
   Brain,
   FileText,
@@ -21,6 +22,7 @@ import { CronsTab } from "./tabs/CronsTab";
 import { FlowsTab } from "./tabs/FlowsTab";
 import { SkillTreesTab } from "./tabs/SkillTreesTab";
 import { OutputsTab } from "./tabs/OutputsTab";
+import { ConsoleTab as RubricConsoleTab } from "./tabs/ConsoleTab";
 import { ALL_AGENTS, type AgentStatus } from "./data/agents";
 import { PixelIcon } from "./PixelIcon";
 import { useAgentStatuses } from "./useAgentStatuses";
@@ -40,6 +42,7 @@ type TabKey =
   | "crons"
   | "team"
   | "icons"
+  | "terminal"
   | "console"
   | "sprint"
   | "memory"
@@ -66,6 +69,7 @@ const TABS: TabDef[] = [
   { key: "crons", label: "Crons", icon: CalendarDays, group: "rubric" },
   { key: "team", label: "Team", icon: Network, group: "rubric" },
   { key: "icons", label: "Icons", icon: Grid3x3, group: "rubric" },
+  { key: "terminal", label: "Terminal", icon: TerminalSquare, group: "rubric" },
   { key: "console", label: "Console", icon: Terminal, group: "blueprint" },
   { key: "sprint", label: "Sprint", icon: KanbanSquare, group: "blueprint" },
   { key: "memory", label: "Memory", icon: Brain, group: "blueprint" },
@@ -208,6 +212,7 @@ export function CommandShell() {
           {active === "skill-trees" && <SkillTreesTab />}
           {active === "crons" && <CronsTab />}
           {active === "outputs" && <OutputsTab />}
+          {active === "terminal" && <RubricConsoleTab />}
           {active === "console" && (
             <div className="h-full">
               <ConsoleTab />
