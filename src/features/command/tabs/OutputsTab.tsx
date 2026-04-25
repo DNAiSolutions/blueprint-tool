@@ -43,7 +43,7 @@ export function OutputsTab() {
       {/* Header */}
       <div className="mb-6 flex items-baseline justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-white mb-1">Outputs</h2>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">Outputs</h2>
           <p className="text-sm text-slate-400 max-w-2xl">
             What the flows are producing right now. Videos, carousels, docs, designs, websites — every artifact the
             agents ship lives here with an inline preview and download.
@@ -86,7 +86,7 @@ export function OutputsTab() {
             />
           ))}
         </div>
-        <div className="flex items-center p-0.5 rounded-full border border-white/10 bg-white/[0.02]">
+        <div className="flex items-center p-0.5 rounded-full border border-slate-300 dark:border-white/10 bg-white dark:bg-white/[0.02]">
           <ViewBtn active={view === "status"} onClick={() => setView("status")} icon={<LayoutGrid className="w-3 h-3" />}>
             By status
           </ViewBtn>
@@ -138,7 +138,7 @@ function StatusBoard({
         return (
           <div
             key={status}
-            className="rounded-2xl border border-white/5 bg-white/[0.02] p-3 min-h-[220px]"
+            className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-3 min-h-[220px]"
           >
             <div className="flex items-center justify-between px-1 mb-3">
               <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ function RunGroup({
 
   return (
     <div
-      className="rounded-2xl border border-white/5 bg-white/[0.02] p-4"
+      className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-4"
       style={
         agent
           ? { borderLeft: `3px solid ${agent.color}`, paddingLeft: "15px" }
@@ -246,9 +246,9 @@ function RunGroup({
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-white font-semibold text-[15px]">{workflow?.name ?? first.workflow}</h3>
+              <h3 className="text-slate-900 dark:text-white font-semibold text-[15px]">{workflow?.name ?? first.workflow}</h3>
               {!isSolo && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-slate-400 font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-300 dark:border-white/10 text-slate-400 font-mono">
                   {items.length} steps
                 </span>
               )}
@@ -312,7 +312,7 @@ function OutputCard({
   const statusMeta = STATUS_META[output.status];
   return (
     <div
-      className="rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 transition-all overflow-hidden"
+      className="rounded-xl bg-white dark:bg-white/[0.02] hover:bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:border-white/10 transition-all overflow-hidden"
       style={{ borderLeft: `2px solid ${typeMeta.color}` }}
     >
       <OutputPreview output={output} size="card" onExpand={onExpand} />
@@ -346,7 +346,7 @@ function OutputCard({
               e.stopPropagation();
               onExpand();
             }}
-            className="text-[10px] px-2 py-1 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white"
+            className="text-[10px] px-2 py-1 rounded-full border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-200 dark:bg-white/[0.08] text-slate-300 hover:text-white"
           >
             Open
           </button>
@@ -355,7 +355,7 @@ function OutputCard({
               href={output.fileUrl}
               download
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white"
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-200 dark:bg-white/[0.08] text-slate-300 hover:text-white"
               title="Download"
             >
               <Download className="w-2.5 h-2.5" />
@@ -410,11 +410,11 @@ function Lightbox({ output, onClose }: { output: WorkflowOutput; onClose: () => 
       onClick={onClose}
     >
       <div
-        className="bg-[#10101C] border border-white/10 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-[#10101C] border border-slate-300 dark:border-white/10 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 p-4 border-b border-white/5">
+        <div className="flex items-start justify-between gap-4 p-4 border-b border-slate-200 dark:border-white/5">
           <div className="flex items-start gap-3 min-w-0">
             <div
               className="rounded-xl px-3 py-2 text-xs font-mono flex-shrink-0"
@@ -423,7 +423,7 @@ function Lightbox({ output, onClose }: { output: WorkflowOutput; onClose: () => 
               {typeMeta.label}
             </div>
             <div className="min-w-0">
-              <h3 className="text-white font-semibold text-base">{output.title}</h3>
+              <h3 className="text-slate-900 dark:text-white font-semibold text-base">{output.title}</h3>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px]">
                 {agent && (
                   <span className="flex items-center gap-1.5 text-slate-400">
@@ -457,7 +457,7 @@ function Lightbox({ output, onClose }: { output: WorkflowOutput; onClose: () => 
             <p className="text-[13px] text-slate-300 leading-relaxed mt-4">{output.summary}</p>
 
             {output.metadata?.bodyText && (
-              <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+              <div className="mt-4 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-4">
                 <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2 font-mono">
                   Body
                 </div>
@@ -468,7 +468,7 @@ function Lightbox({ output, onClose }: { output: WorkflowOutput; onClose: () => 
             )}
 
             {output.metadata?.caption && (
-              <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+              <div className="mt-4 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-4">
                 <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2 font-mono">
                   Caption
                 </div>
@@ -507,11 +507,11 @@ function Lightbox({ output, onClose }: { output: WorkflowOutput; onClose: () => 
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-white/5 flex-wrap">
+        <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200 dark:border-white/5 flex-wrap">
           {(output.fileUrl || output.externalUrl) && (
             <button
               onClick={copyLink}
-              className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white"
+              className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-200 dark:bg-white/[0.08] text-slate-300 hover:text-white"
             >
               <Copy className="w-3 h-3" />
               {copied ? "copied" : "copy link"}
@@ -521,7 +521,7 @@ function Lightbox({ output, onClose }: { output: WorkflowOutput; onClose: () => 
             <a
               href={output.fileUrl}
               download
-              className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white"
+              className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-200 dark:bg-white/[0.08] text-slate-300 hover:text-white"
             >
               <Download className="w-3 h-3" />
               download
@@ -550,7 +550,7 @@ function Lightbox({ output, onClose }: { output: WorkflowOutput; onClose: () => 
 
 function StatPill({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/[0.02]">
+    <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-slate-300 dark:border-white/10 bg-white dark:bg-white/[0.02]">
       <span className="text-[10px] uppercase tracking-widest text-slate-500">{label}</span>
       <span className="text-sm font-bold" style={{ color }}>
         {value}

@@ -241,7 +241,7 @@ export function ConsoleTab() {
       {/* Header */}
       <div className="flex items-baseline justify-between mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-semibold text-white mb-1">Console</h2>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">Console</h2>
           <p className="text-sm text-slate-400">
             Built-in terminal for the Command Center. POST agent statuses, query the live state, and watch
             realtime events stream in.
@@ -265,7 +265,7 @@ export function ConsoleTab() {
       {/* Log */}
       <div
         ref={logRef}
-        className="flex-1 min-h-0 rounded-2xl border border-white/5 bg-black/40 p-4 overflow-y-auto font-mono text-[12.5px] leading-relaxed"
+        className="flex-1 min-h-0 rounded-2xl border border-slate-200 dark:border-white/5 bg-black/40 p-4 overflow-y-auto font-mono text-[12.5px] leading-relaxed"
         onClick={() => inputRef.current?.focus()}
       >
         {lines.map((l) => (
@@ -290,7 +290,7 @@ export function ConsoleTab() {
       </div>
 
       {/* Input */}
-      <div className="mt-3 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 focus-within:border-[#14E0E0]/50 focus-within:shadow-[0_0_18px_rgba(20,224,224,0.15)] transition-all">
+      <div className="mt-3 flex items-center gap-2 rounded-full border border-slate-300 dark:border-white/10 bg-white dark:bg-white/[0.02] px-4 py-2 focus-within:border-[#14E0E0]/50 focus-within:shadow-[0_0_18px_rgba(20,224,224,0.15)] transition-all">
         <span className="text-[#14E0E0] font-mono text-sm">▸</span>
         <input
           ref={inputRef}
@@ -347,7 +347,7 @@ function QuickBtn({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="text-[11px] px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+      className="text-[11px] px-3 py-1 rounded-full border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-200 dark:bg-white/[0.08] text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
     >
       {children}
     </button>

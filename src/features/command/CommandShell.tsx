@@ -93,38 +93,44 @@ export function CommandShell() {
 
   return (
     <div
-      className="flex text-white font-sans"
+      className="relative flex font-sans bg-slate-50 dark:bg-[#0A0A12] text-slate-900 dark:text-white"
       style={{
         height: "100vh", // blueprint-tool: renders standalone, no wrapper header
-        background:
-          "radial-gradient(1100px 700px at 18% -10%, rgba(20,224,224,0.08), transparent 55%), radial-gradient(1200px 800px at 100% 120%, rgba(126,91,220,0.10), transparent 60%), #0A0A12",
       }}
     >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(1100px 700px at 18% -10%, rgba(20,224,224,0.06), transparent 55%), radial-gradient(1200px 800px at 100% 120%, rgba(126,91,220,0.08), transparent 60%)",
+        }}
+      />
+
       {/* Sub-sidebar */}
-      <aside className="w-60 flex-shrink-0 border-r border-white/5 flex flex-col">
+      <aside className="relative w-60 flex-shrink-0 border-r border-slate-200 dark:border-white/5 bg-white/70 dark:bg-transparent backdrop-blur-sm flex flex-col">
         {/* Brand */}
-        <div className="px-4 pt-6 pb-5 border-b border-white/5">
+        <div className="px-4 pt-6 pb-5 border-b border-slate-200 dark:border-white/5">
           <div className="flex items-center gap-2.5">
             <BrandHelix />
             <div className="leading-none">
               <div className="text-[17px] font-bold tracking-tight">
-                <span className="text-white">Digital</span>
+                <span className="text-slate-900 dark:text-white">Digital</span>
                 <span className="bg-gradient-to-r from-[#14E0E0] via-[#4A82E8] to-[#7E5BDC] bg-clip-text text-transparent">
                   DNA
                 </span>
               </div>
-              <div className="text-[10px] uppercase tracking-[0.22em] text-slate-400 mt-1">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400 mt-1">
                 Command Center
               </div>
             </div>
           </div>
-          <div className="text-[9px] uppercase tracking-widest text-slate-600 mt-4">
+          <div className="text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-600 mt-4">
             We build the machine
           </div>
         </div>
 
         {/* Agent status rail */}
-        <div className="px-3 py-3 border-b border-white/5">
+        <div className="px-3 py-3 border-b border-slate-200 dark:border-white/5">
           <div className="text-[9px] uppercase tracking-widest text-slate-500 px-2 mb-2">
             Agents
           </div>
@@ -135,12 +141,12 @@ export function CommandShell() {
               return (
                 <div
                   key={a.id}
-                  className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white/[0.03] cursor-default"
+                  className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.03] cursor-default"
                   title={entry?.task ? `${a.name} — ${entry.task}` : a.name}
                 >
                   <PixelIcon name={a.icon} color={a.color} size={14} />
                   <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass[s]}`} />
-                  <span className="text-[11px] text-slate-400 truncate">{a.name}</span>
+                  <span className="text-[11px] text-slate-600 dark:text-slate-400 truncate">{a.name}</span>
                 </div>
               );
             })}
@@ -157,7 +163,7 @@ export function CommandShell() {
             return (
               <div key={t.key}>
                 {showDivider && (
-                  <div className="my-2 pt-2 px-3 text-[9px] uppercase tracking-widest text-slate-600 border-t border-white/5">
+                  <div className="my-2 pt-2 px-3 text-[9px] uppercase tracking-widest text-slate-400 dark:text-slate-600 border-t border-slate-200 dark:border-white/5">
                     Blueprint
                   </div>
                 )}
@@ -166,8 +172,8 @@ export function CommandShell() {
                   className={[
                     "w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-[13px] font-medium text-left transition-all",
                     isActive
-                      ? "bg-gradient-to-r from-[#14E0E0]/18 via-[#4A82E8]/14 to-[#7E5BDC]/18 text-white shadow-[inset_0_0_0_1px_rgba(20,224,224,0.25),0_0_18px_rgba(20,224,224,0.25)]"
-                      : "text-slate-400 hover:text-white hover:bg-white/[0.04]",
+                      ? "bg-gradient-to-r from-[#14E0E0]/15 via-[#4A82E8]/12 to-[#7E5BDC]/15 text-slate-900 dark:text-white shadow-[inset_0_0_0_1px_rgba(20,224,224,0.3),0_0_14px_rgba(20,224,224,0.18)]"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]",
                   ].join(" ")}
                 >
                   <Icon className={"h-3.5 w-3.5 " + (isActive ? "text-[#14E0E0]" : "opacity-60")} />
@@ -178,25 +184,25 @@ export function CommandShell() {
           })}
         </nav>
 
-        <div className="px-4 pb-4 text-[9px] text-slate-600 leading-relaxed">
-          Created by <a className="hover:text-slate-400" href="https://robolabs.so" target="_blank" rel="noreferrer">RoboLabs</a> ·{" "}
-          Learn more at <a className="hover:text-slate-400" href="https://robonuggets.com" target="_blank" rel="noreferrer">RoboNuggets</a>
+        <div className="px-4 pb-4 text-[9px] text-slate-500 dark:text-slate-600 leading-relaxed">
+          Created by <a className="hover:text-slate-700 dark:hover:text-slate-400" href="https://robolabs.so" target="_blank" rel="noreferrer">RoboLabs</a> ·{" "}
+          Learn more at <a className="hover:text-slate-700 dark:hover:text-slate-400" href="https://robonuggets.com" target="_blank" rel="noreferrer">RoboNuggets</a>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-12 flex-shrink-0 border-b border-white/5 flex items-center justify-between px-6">
-          <div className="text-[12px] uppercase tracking-[0.22em] text-slate-400 font-mono">
+      <main className="relative flex-1 flex flex-col overflow-hidden">
+        <header className="h-12 flex-shrink-0 border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6">
+          <div className="text-[12px] uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400 font-mono">
             {TABS.find((t) => t.key === active)?.label}
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-500 font-mono">
             <span
               className={
                 "h-1.5 w-1.5 rounded-full " +
                 (activeCount > 0
                   ? "bg-[#14E0E0] animate-pulse shadow-[0_0_8px_rgba(20,224,224,0.8)]"
-                  : "bg-slate-600")
+                  : "bg-slate-300 dark:bg-slate-600")
               }
             />
             {activeCount > 0 ? `${activeCount} active` : "idle"}

@@ -18,7 +18,7 @@ export function AgentsTab({ statuses = {} }: Props) {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-white mb-1">Agents</h2>
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">Agents</h2>
         <p className="text-sm text-slate-400">Live status for every specialist on the DigitalDNA team.</p>
       </div>
 
@@ -31,7 +31,7 @@ export function AgentsTab({ statuses = {} }: Props) {
           return (
             <div
               key={agent.id}
-              className="group rounded-2xl border border-white/5 bg-white/[0.02] p-5 hover:border-white/10 hover:bg-white/[0.04] transition-all"
+              className="group rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-5 hover:border-slate-300 dark:border-white/10 hover:bg-slate-50 dark:bg-white/[0.04] transition-all"
             >
               <div className="flex items-start gap-4 mb-4">
                 <div
@@ -45,17 +45,17 @@ export function AgentsTab({ statuses = {} }: Props) {
                     <span className={`h-2 w-2 rounded-full ${meta.dot} ${meta.pulse ? "animate-pulse" : ""}`} />
                     <span className="text-[10px] uppercase tracking-wider text-slate-400 font-mono">{meta.label}</span>
                   </div>
-                  <h3 className="text-white font-semibold text-sm leading-tight">{agent.name}</h3>
+                  <h3 className="text-slate-900 dark:text-white font-semibold text-sm leading-tight">{agent.name}</h3>
                   <div className="text-xs text-slate-500 mt-0.5">{agent.role}</div>
                 </div>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 mb-3">{agent.description}</p>
               {task ? (
-                <div className="text-[11px] font-mono text-cyan-300/80 truncate border-t border-white/5 pt-2">
+                <div className="text-[11px] font-mono text-cyan-300/80 truncate border-t border-slate-200 dark:border-white/5 pt-2">
                   ▸ {task}
                 </div>
               ) : (
-                <div className="text-[11px] font-mono text-slate-600 border-t border-white/5 pt-2">— no active task</div>
+                <div className="text-[11px] font-mono text-slate-600 border-t border-slate-200 dark:border-white/5 pt-2">— no active task</div>
               )}
             </div>
           );

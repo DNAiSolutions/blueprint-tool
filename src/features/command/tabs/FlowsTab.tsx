@@ -71,7 +71,7 @@ export function FlowsTab() {
   return (
     <div className="flex h-full min-h-[640px]">
       {/* Workflow list */}
-      <aside className="w-60 flex-shrink-0 border-r border-white/5 overflow-y-auto">
+      <aside className="w-60 flex-shrink-0 border-r border-slate-200 dark:border-white/5 overflow-y-auto">
         <div className="p-4 text-[10px] uppercase tracking-widest text-slate-500">
           Workflows
         </div>
@@ -86,8 +86,8 @@ export function FlowsTab() {
                 className={[
                   "w-full text-left px-3 py-2.5 rounded-lg transition-all flex items-start gap-2.5",
                   active
-                    ? "bg-white/[0.06]"
-                    : "hover:bg-white/[0.03]",
+                    ? "bg-slate-100 dark:bg-white/[0.06]"
+                    : "hover:bg-slate-50 dark:bg-white/[0.03]",
                 ].join(" ")}
                 style={
                   active
@@ -149,7 +149,7 @@ export function FlowsTab() {
             <button
               onClick={reset}
               disabled={playStep === -1}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] text-slate-300 hover:text-white border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] text-slate-300 hover:text-white border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <RotateCcw className="w-3 h-3" />
               Reset
@@ -490,7 +490,7 @@ function FlowCanvas({
       <canvas ref={canvasRef} onMouseMove={handleMouseMove} onClick={handleClick} />
       {/* Simple tooltip */}
       {hoveredSkillLocal && (
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-white/10 text-[11px] text-white/90 font-mono pointer-events-none">
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-slate-300 dark:border-white/10 text-[11px] text-white/90 font-mono pointer-events-none">
           {workflow.skills.find((s) => s.id === hoveredSkillLocal)?.name}
         </div>
       )}

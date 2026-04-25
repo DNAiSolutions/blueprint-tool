@@ -70,7 +70,7 @@ export function CronsTab() {
     <div className="p-6 max-w-[1400px] mx-auto">
       <div className="mb-6 flex items-baseline justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-semibold text-white mb-1">Crons</h2>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">Crons</h2>
           <p className="text-sm text-slate-400">
             Weekly schedule of agent tasks. Color-coded by owning agent.
           </p>
@@ -81,7 +81,7 @@ export function CronsTab() {
       </div>
 
       {/* Weekly grid */}
-      <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 overflow-x-auto mb-6">
+      <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-4 overflow-x-auto mb-6">
         <div
           className="grid min-w-[900px]"
           style={{ gridTemplateColumns: "60px repeat(7, minmax(0, 1fr))" }}
@@ -91,7 +91,7 @@ export function CronsTab() {
           {DAYS.map((d, i) => (
             <div
               key={d}
-              className="text-[10px] uppercase tracking-widest text-slate-500 text-center pb-2 border-b border-white/5"
+              className="text-[10px] uppercase tracking-widest text-slate-500 text-center pb-2 border-b border-slate-200 dark:border-white/5"
             >
               {d}
               {i === 1 && <span className="ml-1 text-[#14E0E0]/70">·</span>}
@@ -116,7 +116,7 @@ export function CronsTab() {
       {/* Monthly + off-grid lists */}
       <div className="grid md:grid-cols-2 gap-4">
         {monthly.length > 0 && (
-          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-4">
             <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-3">
               Monthly
             </div>
@@ -128,7 +128,7 @@ export function CronsTab() {
           </div>
         )}
         {earlyLate.length > 0 && (
-          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-4">
             <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-3">
               Outside window (before 6am / after 10pm)
             </div>
@@ -169,7 +169,7 @@ function HourRow({
 }) {
   return (
     <>
-      <div className="text-[10px] font-mono text-slate-600 text-right pr-2 pt-1 border-t border-white/5">
+      <div className="text-[10px] font-mono text-slate-600 text-right pr-2 pt-1 border-t border-slate-200 dark:border-white/5">
         {formatTime(hour, 0)}
       </div>
       {[0, 1, 2, 3, 4, 5, 6].map((day) => {
@@ -177,7 +177,7 @@ function HourRow({
         return (
           <div
             key={day}
-            className="relative border-t border-l border-white/5 min-h-[48px] py-1 px-1"
+            className="relative border-t border-l border-slate-200 dark:border-white/5 min-h-[48px] py-1 px-1"
           >
             {events.map((e) => (
               <CronChip
@@ -213,7 +213,7 @@ function CronChip({
         "text-[10px] leading-tight truncate",
         selected
           ? "bg-white/10 shadow-[0_0_12px_rgba(20,224,224,0.3)]"
-          : "hover:bg-white/[0.04]",
+          : "hover:bg-slate-50 dark:bg-white/[0.04]",
       ].join(" ")}
       style={{
         background: selected
@@ -238,7 +238,7 @@ function CronListRow({ cron, onClick }: { cron: CronJob; onClick: () => void }) 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/[0.04] transition-all"
+      className="w-full text-left flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-50 dark:bg-white/[0.04] transition-all"
       style={{ borderLeft: `2px solid ${agent?.color ?? "#A5A5C2"}` }}
     >
       {agent && <PixelIcon name={agent.icon} color={agent.color} size={18} />}
@@ -260,7 +260,7 @@ function SelectedPanel({ cron, onClose }: { cron: CronJob; onClose: () => void }
   const agent = getAgent(cron.agent);
   const parsed = parseCron(cron.cron);
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-6">
+    <div className="rounded-2xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-5 mb-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           {agent && (
@@ -272,7 +272,7 @@ function SelectedPanel({ cron, onClose }: { cron: CronJob; onClose: () => void }
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h3 className="text-white font-semibold text-base mb-0.5">{cron.name}</h3>
+            <h3 className="text-slate-900 dark:text-white font-semibold text-base mb-0.5">{cron.name}</h3>
             <div className="text-[11px] text-slate-500 font-mono mb-2">
               <span
                 className={

@@ -167,7 +167,7 @@ export function OutputPreview({
       <div
         className={[
           containerClass,
-          "bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/5 aspect-auto min-h-[120px] p-3 overflow-hidden",
+          "bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-slate-200 dark:border-white/5 aspect-auto min-h-[120px] p-3 overflow-hidden",
         ].join(" ")}
         onClick={(e) => {
           e.stopPropagation();

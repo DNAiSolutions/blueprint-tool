@@ -18,7 +18,7 @@ export function IconsTab() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-white mb-1">Icons</h2>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">Icons</h2>
           <p className="text-sm text-slate-400">Pixel-art icon library for agents. Click to copy the name.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -28,7 +28,7 @@ export function IconsTab() {
               key={c}
               onClick={() => setTint(c)}
               className={`w-6 h-6 rounded-full border-2 transition-all ${
-                tint === c ? "border-white scale-110" : "border-white/10 hover:border-white/30"
+                tint === c ? "border-white scale-110" : "border-slate-300 dark:border-white/10 hover:border-white/30"
               }`}
               style={{ background: c }}
               aria-label={`Tint ${c}`}
@@ -42,7 +42,7 @@ export function IconsTab() {
           <button
             key={name}
             onClick={() => copy(name)}
-            className="group rounded-xl border border-white/5 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05] p-4 flex flex-col items-center gap-2 transition-all"
+            className="group rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] hover:border-slate-400 dark:hover:border-white/15 hover:bg-slate-100 dark:bg-white/[0.05] p-4 flex flex-col items-center gap-2 transition-all"
           >
             <PixelIcon name={name} color={tint} size={48} />
             <div className="text-[11px] text-slate-400 group-hover:text-white transition-colors font-mono">{name}</div>
