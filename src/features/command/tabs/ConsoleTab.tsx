@@ -20,11 +20,10 @@
 //
 // Up/down arrow keys recall recent commands. Enter to run.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ALL_AGENTS, type AgentStatus } from "../data/agents";
 
-const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL;
 const STATUS_VALUES: AgentStatus[] = ["active", "waiting", "recent", "idle", "offline"];
 const VALID_AGENT_IDS = new Set(ALL_AGENTS.map((a) => a.id));
 
@@ -64,11 +63,6 @@ export function ConsoleTab() {
   const [busy, setBusy] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const supabaseFn = useMemo(
-    () => SUPABASE_URL.replace(/\/$/, "") + "/functions/v1/agent-status",
-    []
-  );
 
   // Autoscroll on new lines
   useEffect(() => {
@@ -138,19 +132,23 @@ export function ConsoleTab() {
           break;
         case "status":
         case "ls": {
-          const r = await fetch(supabaseFn, { method: "GET" });
-          if (!r.ok) {
-            push("err", `GET failed (${r.status})`);
+          // Read directly from the table — works regardless of edge fn deploy
+          // state since the migration created the table + RLS read-all.
+          const { data, error } = await supabase
+            .from("agent_status")
+            .select("agent_id,status,task,updated_at")
+            .order("updated_at", { ascending: false });
+          if (error) {
+            push("err", `query failed: ${error.message}`);
             break;
           }
-          const data = await r.json();
-          const rows = (data.agents || []) as any[];
+          const rows = data || [];
           if (rows.length === 0) push("out", "(no rows)");
           else {
             const out = rows
               .map(
-                (a) =>
-                  `  ${a.agent_id.padEnd(22)}  ${a.display_status.padEnd(8)}  ${
+                (a: any) =>
+                  `  ${a.agent_id.padEnd(22)}  ${(a.status as string).padEnd(8)}  ${
                     a.task ? '"' + a.task + '"' : ""
                   }`
               )
@@ -162,7 +160,10 @@ export function ConsoleTab() {
         case "reset": {
           push("info", "Resetting all 9 agents → idle…");
           for (const a of ALL_AGENTS) {
-            await postStatus(supabaseFn, a.id, "idle", "");
+            const r = await postStatus(a.id, "idle", "");
+            if (!r.ok) {
+              push("err", `failed to reset ${a.id}: ${r.error}`);
+            }
           }
           push("out", "ok — all idle");
           break;
@@ -190,7 +191,7 @@ export function ConsoleTab() {
             break;
           }
           const task = taskParts.join(" ");
-          const res = await postStatus(supabaseFn, agent, status, task);
+          const res = await postStatus(agent, status, task);
           if (res.ok) push("out", `ok — ${agent} → ${status}`);
           else push("err", `ping failed: ${res.error}`);
           break;
@@ -265,7 +266,7 @@ export function ConsoleTab() {
       {/* Log */}
       <div
         ref={logRef}
-        className="flex-1 min-h-0 rounded-2xl border border-slate-200 dark:border-white/5 bg-black/40 p-4 overflow-y-auto font-mono text-[12.5px] leading-relaxed"
+        className="flex-1 min-h-0 rounded-2xl border border-slate-200 dark:border-white/5 bg-slate-900 dark:bg-black/40 p-4 overflow-y-auto font-mono text-[12.5px] leading-relaxed"
         onClick={() => inputRef.current?.focus()}
       >
         {lines.map((l) => (
@@ -280,8 +281,8 @@ export function ConsoleTab() {
                 : l.kind === "err"
                 ? "text-[#FF5577]"
                 : l.kind === "info"
-                ? "text-slate-500 italic"
-                : "text-[#14E0E0]/85") // event
+                ? "text-slate-400 italic"
+                : "text-[#14E0E0]") // event
             }
           >
             {l.text}
@@ -311,24 +312,21 @@ export function ConsoleTab() {
 }
 
 async function postStatus(
-  url: string,
   agent: string,
   status: AgentStatus,
   task: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Use supabase.functions.invoke — handles apikey + Authorization headers
+  // and CORS automatically. Goes to the agent-status edge function which
+  // upserts via service-role and bypasses RLS.
   try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent, status, task }),
+    const { data, error } = await supabase.functions.invoke("agent-status", {
+      body: { agent, status, task },
     });
-    if (!r.ok) {
-      const txt = await r.text().catch(() => "");
-      return { ok: false, error: `HTTP ${r.status}${txt ? ": " + txt.slice(0, 120) : ""}` };
-    }
-    const data = await r.json().catch(() => ({}));
+    if (error) return { ok: false, error: error.message ?? String(error) };
     if (data?.success) return { ok: true };
-    return { ok: false, error: JSON.stringify(data) };
+    if (data?.error) return { ok: false, error: data.error };
+    return { ok: true };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? String(e) };
   }
